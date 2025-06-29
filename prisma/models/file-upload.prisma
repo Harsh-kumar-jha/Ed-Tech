@@ -1,0 +1,17 @@
+// File Upload Model
+model FileUpload {
+  id           String   @id @default(uuid())
+  originalName String
+  filename     String   @unique
+  path         String
+  mimetype     String
+  size         Int
+  uploadedBy   String
+  purpose      String // profile, test, question, etc.
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  @@index([uploadedBy, purpose])
+  @@index([createdAt])
+  @@map("file_uploads")
+} 

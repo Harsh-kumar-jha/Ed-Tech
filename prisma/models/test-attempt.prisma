@@ -1,0 +1,76 @@
+// Test Attempt and Results Models
+model TestAttempt {
+  id          String     @id @default(uuid())
+  userId      String
+  testId      String
+  status      TestStatus @default(NOT_STARTED)
+  startedAt   DateTime   @default(now())
+  completedAt DateTime?
+  submittedAt DateTime?
+  timeSpent   Int        @default(0) // in seconds
+  score       Float?
+  totalScore  Float
+  percentage  Float?
+  aiSummary   String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  // Relations
+  user    User         @relation(fields: [userId], references: [id])
+  test    IELTSTest    @relation(fields: [testId], references: [id])
+  answers TestAnswer[]
+  result  TestResult?
+
+  @@index([userId, testId, status])
+  @@map("test_attempts")
+}
+
+model TestAnswer {
+  id           String  @id @default(uuid())
+  attemptId    String
+  questionId   String
+  questionNumber Int
+  userAnswer   String
+  isCorrect    Boolean?
+  pointsEarned Float   @default(0)
+  timeSpent    Int     @default(0) // in seconds
+  aiEvaluation Json? // AI feedback object
+  createdAt    DateTime @default(now())
+
+  // Relations
+  attempt  TestAttempt  @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  question TestQuestion @relation(fields: [questionId], references: [id])
+
+  @@unique([attemptId, questionId])
+  @@index([attemptId, questionNumber])
+  @@map("test_answers")
+}
+
+model TestResult {
+  id            String   @id @default(uuid())
+  userId        String
+  testId        String
+  attemptId     String   @unique
+  module        IELTSModule
+  difficulty    DifficultyLevel
+  score         Float
+  totalScore    Float
+  percentage    Float
+  timeSpent     Int // in seconds
+  correctAnswers Int
+  wrongAnswers  Int
+  skippedAnswers Int
+  strengths     String[] // Areas where user performed well
+  weaknesses    String[] // Areas needing improvement
+  aiSummary     String?
+  createdAt     DateTime @default(now())
+
+  // Relations
+  user    User        @relation(fields: [userId], references: [id])
+  test    IELTSTest   @relation(fields: [testId], references: [id])
+  attempt TestAttempt @relation(fields: [attemptId], references: [id])
+
+  @@index([userId, module, createdAt])
+  @@index([testId, createdAt])
+  @@map("test_results")
+} 

@@ -1,0 +1,45 @@
+// All Enums for the IELTS EdTech Platform
+
+enum UserRole {
+  STUDENT
+  INSTRUCTOR
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum IELTSModule {
+  READING
+  LISTENING
+  WRITING
+  SPEAKING
+}
+
+enum DifficultyLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+}
+
+enum QuestionType {
+  MULTIPLE_CHOICE
+  TRUE_FALSE
+  FILL_BLANK
+  ESSAY
+  AUDIO_RESPONSE
+}
+
+enum TestStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  SUBMITTED
+  GRADED
+  EXPIRED
+}
+
+enum LeaderboardType {
+  DAILY
+  WEEKLY
+  MONTHLY
+  GLOBAL
+} 

@@ -1,0 +1,49 @@
+// IELTS Test Management Models
+model IELTSTest {
+  id             String          @id @default(uuid())
+  title          String
+  description    String
+  module         IELTSModule
+  difficulty     DifficultyLevel
+  timeLimit      Int // in seconds
+  totalQuestions Int
+  passingScore   Float
+  instructions   String
+  isActive       Boolean         @default(true)
+  createdBy      String
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  // Relations
+  creator     User           @relation("TestCreator", fields: [createdBy], references: [id])
+  questions   TestQuestion[]
+  attempts    TestAttempt[]
+  testResults TestResult[]
+
+  @@index([module, difficulty, isActive])
+  @@map("ielts_tests")
+}
+
+model TestQuestion {
+  id           String       @id @default(uuid())
+  testId       String
+  questionNumber Int
+  questionType QuestionType
+  questionText String
+  options      String[] // JSON array for multiple choice options
+  correctAnswer String?
+  points       Float
+  explanation  String?
+  audioUrl     String?
+  imageUrl     String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  // Relations
+  test    IELTSTest     @relation(fields: [testId], references: [id], onDelete: Cascade)
+  answers TestAnswer[]
+
+  @@unique([testId, questionNumber])
+  @@index([testId, questionNumber])
+  @@map("test_questions")
+} 

@@ -1,0 +1,26 @@
+// Leaderboard Model
+model LeaderboardEntry {
+  id             String          @id @default(uuid())
+  userId         String
+  username       String
+  fullName       String
+  avatar         String?
+  totalScore     Float
+  testsCompleted Int
+  averageScore   Float
+  streak         Int             @default(0)
+  rank           Int
+  period         LeaderboardType
+  periodStart    DateTime
+  periodEnd      DateTime
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([userId, period, periodStart])
+  @@index([period, rank])
+  @@index([period, totalScore])
+  @@map("leaderboard_entries")
+} 

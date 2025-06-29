@@ -1,0 +1,49 @@
+// User Management Models
+model User {
+  id              String    @id @default(uuid())
+  email           String    @unique
+  username        String    @unique
+  firstName       String
+  lastName        String
+  password        String
+  role            UserRole  @default(STUDENT)
+  isActive        Boolean   @default(true)
+  isEmailVerified Boolean   @default(false)
+  emailVerifiedAt DateTime?
+  lastLoginAt     DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  profile      UserProfile?
+  testAttempts TestAttempt[]
+  testResults  TestResult[]
+  leaderboard  LeaderboardEntry[]
+  sessions     Session[]
+  auditLogs    AuditLog[]
+  createdTests IELTSTest[]  @relation("TestCreator")
+
+  @@map("users")
+}
+
+model UserProfile {
+  id           String          @id @default(uuid())
+  userId       String          @unique
+  dateOfBirth  DateTime?
+  phone        String?
+  country      String?
+  language     String?         @default("en")
+  timezone     String?         @default("UTC")
+  avatar       String?
+  bio          String?
+  targetScore  Float?
+  currentLevel DifficultyLevel @default(BEGINNER)
+  studyGoals   String[]
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_profiles")
+} 

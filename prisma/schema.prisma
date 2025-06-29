@@ -1,0 +1,346 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+// 
+// 🔧 This file is auto-generated from modular files in models/ and enums/
+// 📝 Edit individual files in those directories, then run: node scripts/build-schema.js
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ===========================
+// ENUMS
+// ===========================
+
+enum UserRole {
+  STUDENT
+  INSTRUCTOR
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum IELTSModule {
+  READING
+  LISTENING
+  WRITING
+  SPEAKING
+}
+
+enum DifficultyLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+}
+
+enum QuestionType {
+  MULTIPLE_CHOICE
+  TRUE_FALSE
+  FILL_BLANK
+  ESSAY
+  AUDIO_RESPONSE
+}
+
+enum TestStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  SUBMITTED
+  GRADED
+  EXPIRED
+}
+
+enum LeaderboardType {
+  DAILY
+  WEEKLY
+  MONTHLY
+  GLOBAL
+}
+
+// ===========================
+// Audit Logging Model
+// ===========================
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  action    String
+  resource  String
+  resourceId String?
+  oldValues Json?
+  newValues Json?
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  // Relations
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([userId, createdAt])
+  @@index([resource, createdAt])
+  @@map("audit_logs")
+}
+
+// ===========================
+// File Upload Model
+// ===========================
+
+model FileUpload {
+  id           String   @id @default(uuid())
+  originalName String
+  filename     String   @unique
+  path         String
+  mimetype     String
+  size         Int
+  uploadedBy   String
+  purpose      String // profile, test, question, etc.
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  @@index([uploadedBy, purpose])
+  @@index([createdAt])
+  @@map("file_uploads")
+}
+
+// ===========================
+// IELTS Test Management Models
+// ===========================
+
+model IELTSTest {
+  id             String          @id @default(uuid())
+  title          String
+  description    String
+  module         IELTSModule
+  difficulty     DifficultyLevel
+  timeLimit      Int // in seconds
+  totalQuestions Int
+  passingScore   Float
+  instructions   String
+  isActive       Boolean         @default(true)
+  createdBy      String
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  // Relations
+  creator     User           @relation("TestCreator", fields: [createdBy], references: [id])
+  questions   TestQuestion[]
+  attempts    TestAttempt[]
+  testResults TestResult[]
+
+  @@index([module, difficulty, isActive])
+  @@map("ielts_tests")
+}
+
+model TestQuestion {
+  id           String       @id @default(uuid())
+  testId       String
+  questionNumber Int
+  questionType QuestionType
+  questionText String
+  options      String[] // JSON array for multiple choice options
+  correctAnswer String?
+  points       Float
+  explanation  String?
+  audioUrl     String?
+  imageUrl     String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  // Relations
+  test    IELTSTest     @relation(fields: [testId], references: [id], onDelete: Cascade)
+  answers TestAnswer[]
+
+  @@unique([testId, questionNumber])
+  @@index([testId, questionNumber])
+  @@map("test_questions")
+}
+
+// ===========================
+// Leaderboard Model
+// ===========================
+
+model LeaderboardEntry {
+  id             String          @id @default(uuid())
+  userId         String
+  username       String
+  fullName       String
+  avatar         String?
+  totalScore     Float
+  testsCompleted Int
+  averageScore   Float
+  streak         Int             @default(0)
+  rank           Int
+  period         LeaderboardType
+  periodStart    DateTime
+  periodEnd      DateTime
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([userId, period, periodStart])
+  @@index([period, rank])
+  @@index([period, totalScore])
+  @@map("leaderboard_entries")
+}
+
+// ===========================
+// Session Management Model
+// ===========================
+
+model Session {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String   @unique
+  userAgent String?
+  ipAddress String?
+  isActive  Boolean  @default(true)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isActive])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+// ===========================
+// Test Attempt and Results Models
+// ===========================
+
+model TestAttempt {
+  id          String     @id @default(uuid())
+  userId      String
+  testId      String
+  status      TestStatus @default(NOT_STARTED)
+  startedAt   DateTime   @default(now())
+  completedAt DateTime?
+  submittedAt DateTime?
+  timeSpent   Int        @default(0) // in seconds
+  score       Float?
+  totalScore  Float
+  percentage  Float?
+  aiSummary   String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  // Relations
+  user    User         @relation(fields: [userId], references: [id])
+  test    IELTSTest    @relation(fields: [testId], references: [id])
+  answers TestAnswer[]
+  result  TestResult?
+
+  @@index([userId, testId, status])
+  @@map("test_attempts")
+}
+
+model TestAnswer {
+  id           String  @id @default(uuid())
+  attemptId    String
+  questionId   String
+  questionNumber Int
+  userAnswer   String
+  isCorrect    Boolean?
+  pointsEarned Float   @default(0)
+  timeSpent    Int     @default(0) // in seconds
+  aiEvaluation Json? // AI feedback object
+  createdAt    DateTime @default(now())
+
+  // Relations
+  attempt  TestAttempt  @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  question TestQuestion @relation(fields: [questionId], references: [id])
+
+  @@unique([attemptId, questionId])
+  @@index([attemptId, questionNumber])
+  @@map("test_answers")
+}
+
+model TestResult {
+  id            String   @id @default(uuid())
+  userId        String
+  testId        String
+  attemptId     String   @unique
+  module        IELTSModule
+  difficulty    DifficultyLevel
+  score         Float
+  totalScore    Float
+  percentage    Float
+  timeSpent     Int // in seconds
+  correctAnswers Int
+  wrongAnswers  Int
+  skippedAnswers Int
+  strengths     String[] // Areas where user performed well
+  weaknesses    String[] // Areas needing improvement
+  aiSummary     String?
+  createdAt     DateTime @default(now())
+
+  // Relations
+  user    User        @relation(fields: [userId], references: [id])
+  test    IELTSTest   @relation(fields: [testId], references: [id])
+  attempt TestAttempt @relation(fields: [attemptId], references: [id])
+
+  @@index([userId, module, createdAt])
+  @@index([testId, createdAt])
+  @@map("test_results")
+}
+
+// ===========================
+// User Management Models
+// ===========================
+
+model User {
+  id              String    @id @default(uuid())
+  email           String    @unique
+  username        String    @unique
+  firstName       String
+  lastName        String
+  password        String
+  role            UserRole  @default(STUDENT)
+  isActive        Boolean   @default(true)
+  isEmailVerified Boolean   @default(false)
+  emailVerifiedAt DateTime?
+  lastLoginAt     DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  profile      UserProfile?
+  testAttempts TestAttempt[]
+  testResults  TestResult[]
+  leaderboard  LeaderboardEntry[]
+  sessions     Session[]
+  auditLogs    AuditLog[]
+  createdTests IELTSTest[]  @relation("TestCreator")
+
+  @@map("users")
+}
+
+model UserProfile {
+  id           String          @id @default(uuid())
+  userId       String          @unique
+  dateOfBirth  DateTime?
+  phone        String?
+  country      String?
+  language     String?         @default("en")
+  timezone     String?         @default("UTC")
+  avatar       String?
+  bio          String?
+  targetScore  Float?
+  currentLevel DifficultyLevel @default(BEGINNER)
+  studyGoals   String[]
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_profiles")
+}
+
