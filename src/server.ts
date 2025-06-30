@@ -17,6 +17,15 @@ import {
 import { accessLogger, logInfo, logError } from './utils/logger';
 import { initializePrisma, checkDatabaseHealth } from './utils/database';
 
+// Import routes
+import { 
+  authRoutes, 
+  ieltsRoutes, 
+  profileRoutes, 
+  leaderboardRoutes, 
+  aiRoutes 
+} from './services';
+
 // Handle uncaught exceptions and unhandled rejections
 handleUncaughtException();
 handleUnhandledRejection();
@@ -27,20 +36,33 @@ export class Server {
   private io: SocketIOServer;
 
   constructor() {
-    this.app = express();
-    this.server = createServer(this.app);
-    this.io = new SocketIOServer(this.server, {
-      cors: {
-        origin: config.ALLOWED_ORIGINS.split(',').map(origin => origin.trim()),
-        credentials: true,
-      },
-    });
-    
-    this.initializeDatabase();
-    this.initializeMiddleware();
-    this.initializeRoutes();
-    this.initializeSocketIO();
-    this.initializeErrorHandling();
+    try {
+      console.log('🔧 Initializing Express app...');
+      this.app = express();
+      
+      console.log('🔧 Creating HTTP server...');
+      this.server = createServer(this.app);
+      
+      console.log('🔧 Initializing Socket.IO...');
+      this.io = new SocketIOServer(this.server, {
+        cors: {
+          origin: config.ALLOWED_ORIGINS.split(',').map(origin => origin.trim()),
+          credentials: true,
+        },
+      });
+      
+      console.log('🔧 Starting initialization methods...');
+      this.initializeDatabase();
+      this.initializeMiddleware();
+      this.initializeRoutes();
+      this.initializeSocketIO();
+      this.initializeErrorHandling();
+      
+      console.log('✅ Server constructor completed successfully');
+    } catch (error) {
+      console.error('❌ Error in Server constructor:', error);
+      throw error;
+    }
   }
 
   private async initializeDatabase(): Promise<void> {
@@ -144,23 +166,48 @@ export class Server {
   }
 
   private initializeRoutes(): void {
-    // API Routes will be added here
-    const apiRouter = express.Router();
-    
-    // Test endpoint
-    apiRouter.get('/test', (req, res) => {
-      res.json({
-        success: true,
-        message: 'IELTS EdTech Platform API is running!',
-        timestamp: new Date().toISOString(),
+    try {
+      console.log('🔧 Initializing routes...');
+      
+      // API Routes
+      const apiRouter = express.Router();
+      
+      // Test endpoint
+      apiRouter.get('/test', (req, res) => {
+        res.json({
+          success: true,
+          message: 'IELTS EdTech Platform API is running!',
+          timestamp: new Date().toISOString(),
+        });
       });
-    });
 
-    // Mount API routes
-    this.app.use(`/api/${config.API_VERSION}`, apiRouter);
+      console.log('🔧 Mounting service routes...');
+      console.log('- Mounting auth routes...');
+      apiRouter.use('/auth', authRoutes);
+      
+      console.log('- Mounting IELTS routes...');
+      apiRouter.use('/ielts', ieltsRoutes);
+      
+      console.log('- Mounting profile routes...');
+      apiRouter.use('/profile', profileRoutes);
+      
+      console.log('- Mounting leaderboard routes...');
+      apiRouter.use('/leaderboard', leaderboardRoutes);
+      
+      console.log('- Mounting AI routes...');
+      apiRouter.use('/ai', aiRoutes);
+      
+      // Mount API routes
+      this.app.use(`/api/${config.API_VERSION}`, apiRouter);
 
-    // Static files (if needed)
-    this.app.use('/uploads', express.static('uploads'));
+      // Static files (if needed)
+      this.app.use('/uploads', express.static('uploads'));
+      
+      console.log('✅ Routes initialized successfully');
+    } catch (error) {
+      console.error('❌ Error initializing routes:', error);
+      throw error;
+    }
   }
 
   private initializeSocketIO(): void {
@@ -197,44 +244,54 @@ export class Server {
   }
 
   public start(): void {
-    const port = config.PORT;
-    
-    this.server.listen(port, () => {
-      logInfo(`🚀 Server started successfully`, {
-        port,
-        environment: config.NODE_ENV,
-        apiVersion: config.API_VERSION,
-        processId: process.pid,
-      });
-
-      // Log available routes in development
-      if (config.NODE_ENV === 'development') {
-        logInfo('📋 Available endpoints:', {
-          health: `http://localhost:${port}/health`,
-          api: `http://localhost:${port}/api/${config.API_VERSION}`,
-          test: `http://localhost:${port}/api/${config.API_VERSION}/test`,
-        });
-      }
-    });
-
-    // Graceful shutdown
-    const gracefulShutdown = (signal: string) => {
-      logInfo(`Received ${signal}, shutting down gracefully`);
+    try {
+      console.log('🔧 Starting server...');
+      const port = config.PORT;
+      console.log(`🔧 Attempting to listen on port ${port}...`);
       
-      this.server.close(() => {
-        logInfo('Server closed');
-        process.exit(0);
+      this.server.listen(port, () => {
+        console.log('🔧 Server listen callback triggered');
+        logInfo(`🚀 Server started successfully`, {
+          port,
+          environment: config.NODE_ENV,
+          apiVersion: config.API_VERSION,
+          processId: process.pid,
+        });
+
+        // Log available routes in development
+        if (config.NODE_ENV === 'development') {
+          logInfo('📋 Available endpoints:', {
+            health: `http://localhost:${port}/health`,
+            api: `http://localhost:${port}/api/${config.API_VERSION}`,
+            test: `http://localhost:${port}/api/${config.API_VERSION}/test`,
+          });
+        }
       });
 
-      // Force close after 10 seconds
-      setTimeout(() => {
-        logError('Could not close connections in time, forcefully shutting down');
-        process.exit(1);
-      }, 10000);
-    };
+      // Graceful shutdown
+      const gracefulShutdown = (signal: string) => {
+        logInfo(`Received ${signal}, shutting down gracefully`);
+        
+        this.server.close(() => {
+          logInfo('Server closed');
+          process.exit(0);
+        });
 
-    process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
-    process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+        // Force close after 10 seconds
+        setTimeout(() => {
+          logError('Could not close connections in time, forcefully shutting down');
+          process.exit(1);
+        }, 10000);
+      };
+
+      process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+      process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+      
+    } catch (error) {
+      console.error('❌ Error starting server:', error);
+      logError('Failed to start server', error);
+      process.exit(1);
+    }
   }
 
   public getApp(): express.Application {

@@ -22,7 +22,7 @@ A comprehensive Node.js + Express.js + TypeScript platform for IELTS test prepar
 
 ### Tech Stack
 - **Backend**: Node.js + Express.js + TypeScript
-- **Database**: PostgreSQL with Prisma ORM
+- **Database**: PostgreSQL with Prisma ORM (Modular Schema)
 - **AI**: Ollama integration for intelligent features
 - **Real-time**: Socket.IO for live communication
 - **Authentication**: JWT-based authentication
@@ -30,29 +30,79 @@ A comprehensive Node.js + Express.js + TypeScript platform for IELTS test prepar
 - **Logging**: Winston with daily rotation
 - **Validation**: Joi for request validation
 
-### Project Structure
+### Project Structure (TDD Approach)
 ```
 EdTech/
 ├── src/
 │   ├── config/           # Application configuration
+│   │   └── __tests__/    # Config unit tests
 │   ├── constants/        # Application constants
-│   ├── controllers/      # Request handlers
-│   ├── middleware/       # Custom middleware
-│   ├── models/           # Database models
-│   ├── routes/           # API route definitions
-│   ├── services/         # Business logic services
+│   ├── db/               # Database utilities
+│   │   └── __tests__/    # Database utility tests
+│   ├── models/           # Database models (TypeScript interfaces)
+│   ├── services/         # Business logic services (TDD Structure)
 │   │   ├── Auth/         # Authentication service
+│   │   │   ├── controller/
+│   │   │   │   └── __tests__/  # Auth controller unit tests
+│   │   │   ├── middleware/
+│   │   │   │   └── __tests__/  # Auth middleware unit tests
+│   │   │   ├── utils/
+│   │   │   │   └── __tests__/  # Auth utils unit tests
+│   │   │   ├── config/
+│   │   │   │   └── __tests__/  # Auth config unit tests
+│   │   │   └── routes/
 │   │   ├── AI/           # AI integration service
+│   │   │   ├── controller/
+│   │   │   │   └── __tests__/
+│   │   │   ├── middleware/
+│   │   │   │   └── __tests__/
+│   │   │   ├── utils/
+│   │   │   │   └── __tests__/
+│   │   │   └── config/
+│   │   │       └── __tests__/
 │   │   ├── Ielts/        # IELTS test service
+│   │   │   ├── controller/
+│   │   │   │   └── __tests__/
+│   │   │   ├── middleware/
+│   │   │   │   └── __tests__/
+│   │   │   ├── utils/
+│   │   │   │   └── __tests__/
+│   │   │   └── config/
+│   │   │       └── __tests__/
 │   │   ├── Leaderboard/  # Leaderboard service
+│   │   │   ├── controller/
+│   │   │   │   └── __tests__/
+│   │   │   ├── middleware/
+│   │   │   │   └── __tests__/
+│   │   │   ├── utils/
+│   │   │   │   └── __tests__/
+│   │   │   └── config/
+│   │   │       └── __tests__/
 │   │   └── Profile/      # User profile service
+│   │       ├── controller/
+│   │       │   └── __tests__/
+│   │       ├── middleware/
+│   │       │   └── __tests__/
+│   │       ├── utils/
+│   │       │   └── __tests__/
+│   │       └── config/
+│   │           └── __tests__/
+│   ├── tests/            # Shared test utilities
+│   │   ├── integration/  # Integration tests
+│   │   ├── helpers/      # Test helper functions
+│   │   ├── mocks/        # Mock data and functions
+│   │   └── fixtures/     # Test data fixtures
 │   ├── types/            # TypeScript type definitions
 │   ├── utils/            # Utility functions
+│   │   └── __tests__/    # Utils unit tests
 │   └── server.ts         # Server setup
-├── prisma/
-│   └── schema.prisma     # Database schema
+├── prisma/               # Database schema (Modular)
+│   ├── models/           # Individual model files
+│   ├── enums/            # Enum definitions
+│   ├── scripts/          # Schema build scripts
+│   └── schema.prisma     # Generated main schema file
 ├── logs/                 # Application logs
-├── uploads/              # File uploads
+├── public/               # Static files
 ├── package.json          # Dependencies and scripts
 ├── tsconfig.json         # TypeScript configuration
 └── index.ts              # Application entry point
@@ -119,12 +169,20 @@ OLLAMA_MODEL=llama2
 CREATE DATABASE ielts_edtech_db;
 ```
 
-#### Run Migrations
+#### Modular Prisma Setup
+This project uses a modular Prisma schema approach:
+
 ```bash
+# Build the main schema from modular files
+pnpm run db:build-schema
+
 # Generate Prisma client
 pnpm run db:generate
 
-# Run database migrations
+# Update schema and generate client in one command
+pnpm run db:update
+
+# Run database migrations (when ready)
 pnpm run db:migrate
 
 # (Optional) Seed database with test data
@@ -184,62 +242,60 @@ pnpm run start
 | `pnpm run lint:fix` | Fix ESLint errors |
 | `pnpm run format` | Format code with Prettier |
 | `pnpm run format:check` | Check code formatting |
+| `pnpm run db:build-schema` | Build schema from modular files |
 | `pnpm run db:generate` | Generate Prisma client |
+| `pnpm run db:update` | Build schema + generate client |
 | `pnpm run db:migrate` | Run database migrations |
 | `pnpm run db:migrate:deploy` | Deploy migrations |
+| `pnpm run db:push` | Push schema to database |
+| `pnpm run db:reset` | Reset database (dev only) |
 | `pnpm run db:studio` | Open Prisma Studio |
 | `pnpm run db:seed` | Seed database |
 | `pnpm run test` | Run tests |
 | `pnpm run test:watch` | Run tests in watch mode |
 | `pnpm run clean` | Clean build directory |
 
-## 🌐 API Endpoints
+## 🔧 Database Schema (Modular Approach)
 
-### Health Check
+This project uses a **modular Prisma schema** for better organization and team collaboration:
+
+### Development Workflow
+1. **Edit individual model files** in `prisma/models/` or `prisma/enums/`
+2. **Build the main schema**: `pnpm run db:build-schema`
+3. **Generate client**: `pnpm run db:generate`
+4. **Or do both**: `pnpm run db:update`
+
+### Benefits
+- ✅ **Better Organization**: Each model in its own file
+- ✅ **Team Collaboration**: No merge conflicts in one large file
+- ✅ **Easier Maintenance**: Find and edit specific models quickly
+- ✅ **Clear Structure**: Logical separation of concerns
+
+### Schema Components
+- **Models**: User, IELTS Tests, Attempts, Results, Leaderboard, etc.
+- **Enums**: UserRole, IELTSModule, DifficultyLevel, TestStatus, etc.
+- **Relations**: Proper foreign keys and indexes
+- **Audit Logging**: Track all important changes
+- **File Management**: Handle uploads and media files
+
+## 🌐 Health Check
+
+The server provides a health check endpoint:
+
 ```
 GET /health
 ```
 
-### API Information
-```
-GET /api/v1
-```
-
-### Test Endpoint
-```
-GET /api/v1/test
-```
-
-### Planned API Routes
-```
-# Authentication
-POST /api/v1/auth/register
-POST /api/v1/auth/login
-POST /api/v1/auth/logout
-POST /api/v1/auth/refresh
-
-# User Profile
-GET    /api/v1/profile
-PUT    /api/v1/profile
-POST   /api/v1/profile/avatar
-
-# IELTS Tests
-GET    /api/v1/tests
-POST   /api/v1/tests
-GET    /api/v1/tests/:id
-PUT    /api/v1/tests/:id
-DELETE /api/v1/tests/:id
-POST   /api/v1/tests/:id/attempt
-POST   /api/v1/tests/:id/submit
-
-# Leaderboard
-GET    /api/v1/leaderboard
-GET    /api/v1/leaderboard/:period
-
-# AI Services
-POST   /api/v1/ai/evaluate
-POST   /api/v1/ai/summarize
-POST   /api/v1/ai/feedback
+**Response:**
+```json
+{
+  "status": "ok",
+  "timestamp": "2025-06-29T21:21:30.346Z",
+  "uptime": 109.1740151,
+  "database": "connected",
+  "environment": "development",
+  "version": "1.0.0"
+}
 ```
 
 ## 🔧 Configuration
@@ -286,18 +342,68 @@ The application uses Winston for comprehensive logging:
 - **Exception logs**: `logs/exceptions.log`
 - **Rejection logs**: `logs/rejections.log`
 
-## 🧪 Testing
+## 🧪 Testing (TDD Approach)
 
+This project follows **Test-Driven Development (TDD)** principles with unit tests placed in `__tests__` folders alongside the source code.
+
+### Testing Structure
+```
+src/
+├── services/
+│   └── Auth/
+│       ├── utils/
+│       │   ├── auth.ts                    # Implementation
+│       │   └── __tests__/
+│       │       └── auth.test.ts           # Unit tests
+│       ├── controller/
+│       │   ├── index.ts                   # Implementation
+│       │   └── __tests__/
+│       │       └── controller.test.ts     # Unit tests
+│       └── middleware/
+│           ├── index.ts                   # Implementation
+│           └── __tests__/
+│               └── middleware.test.ts     # Unit tests
+└── tests/
+    ├── integration/                       # Integration tests
+    ├── helpers/                           # Test utilities
+    ├── mocks/                             # Mock data
+    └── fixtures/                          # Test fixtures
+```
+
+### TDD Workflow
+1. **Write failing tests first** (Red)
+2. **Write minimal code to pass tests** (Green)
+3. **Refactor code while keeping tests green** (Refactor)
+
+### Test Commands
 ```bash
 # Run all tests
 pnpm run test
 
-# Run tests in watch mode
+# Run tests in watch mode (great for TDD)
 pnpm run test:watch
 
-# Run tests with coverage
+# Run tests with coverage report
 pnpm run test:coverage
+
+# Run specific test file
+pnpm run test auth.test.ts
+
+# Run tests for specific service
+pnpm run test services/Auth
 ```
+
+### Coverage Requirements
+- **Functions**: 80% minimum
+- **Lines**: 80% minimum
+- **Branches**: 80% minimum
+- **Statements**: 80% minimum
+
+### Testing Tools
+- **Jest**: Test runner and assertion library
+- **ts-jest**: TypeScript support for Jest
+- **Supertest**: HTTP assertions for integration tests
+- **Global Test Helpers**: Common utilities available in all tests
 
 ## 🔒 Security Features
 

@@ -1,6 +1,6 @@
 import Joi from 'joi';
-import { VALIDATION_PATTERNS } from '@/constants';
-import { ValidationResult, ValidationError as CustomValidationError } from '@/types';
+import { VALIDATION_PATTERNS } from '../constants';
+import { ValidationResult, ValidationError as CustomValidationError } from '../types';
 
 // Common validation schemas
 export const commonSchemas = {
@@ -28,8 +28,7 @@ export const authSchemas = {
     firstName: commonSchemas.name,
     lastName: commonSchemas.name,
     password: commonSchemas.password,
-    confirmPassword: Joi.string().valid(Joi.ref('password')).required()
-      .messages({ 'any.only': 'Passwords must match' }),
+    phone: commonSchemas.phone.optional(),
     role: Joi.string().valid('student', 'instructor').default('student'),
   }),
 
@@ -41,21 +40,48 @@ export const authSchemas = {
     'object.xor': 'Either email or username is required',
   }),
 
+  phoneLogin: Joi.object({
+    phone: commonSchemas.phone.required(),
+  }),
+
+  verifyOTP: Joi.object({
+    phone: commonSchemas.phone.optional(),
+    email: commonSchemas.email.optional(),
+    otp: Joi.string().length(6).pattern(/^\d{6}$/).required()
+      .messages({ 'string.pattern.base': 'OTP must be 6 digits' }),
+    type: Joi.string().valid('login', 'password_reset').required(),
+  }).or('phone', 'email').messages({
+    'object.missing': 'Either phone or email is required',
+  }),
+
+  forgotPassword: Joi.object({
+    email: commonSchemas.email.optional(),
+    phone: commonSchemas.phone.optional(),
+  }).or('email', 'phone').messages({
+    'object.missing': 'Either email or phone is required',
+  }),
+
+  resetPassword: Joi.object({
+    token: Joi.string().optional(),
+    otp: Joi.string().length(6).pattern(/^\d{6}$/).optional(),
+    email: commonSchemas.email.optional(),
+    phone: commonSchemas.phone.optional(),
+    password: commonSchemas.password,
+    confirmPassword: Joi.string().valid(Joi.ref('password')).required()
+      .messages({ 'any.only': 'Passwords must match' }),
+  }).or('token', 'otp')
+    .when('otp', {
+      is: Joi.exist(),
+      then: Joi.object().or('email', 'phone'),
+      otherwise: Joi.object()
+    }).messages({
+    'object.missing': 'Either token or OTP with email/phone is required',
+  }),
+
   changePassword: Joi.object({
     currentPassword: Joi.string().required(),
     newPassword: commonSchemas.password,
     confirmPassword: Joi.string().valid(Joi.ref('newPassword')).required()
-      .messages({ 'any.only': 'Passwords must match' }),
-  }),
-
-  forgotPassword: Joi.object({
-    email: commonSchemas.email,
-  }),
-
-  resetPassword: Joi.object({
-    token: Joi.string().required(),
-    password: commonSchemas.password,
-    confirmPassword: Joi.string().valid(Joi.ref('password')).required()
       .messages({ 'any.only': 'Passwords must match' }),
   }),
 };

@@ -1,27 +1,6 @@
-// this file is only for have import and export of all utils files
+/**
+ * Auth Utils Module
+ * Import and export all utility-related functionality
+ */
 
-import {
-  generateAccessToken,
-  generateTokens,
-  generateRefreshToken,
-  verifyAccessToken,
-  verifyRefreshToken,
-  extractTokenFromHeader,
-  authenticateToken,
-  optionalAuth,
-  requireRole,
-  requirePermission,
-} from './auth';
-
-export {
-  generateAccessToken,
-  generateTokens,
-  generateRefreshToken,
-  verifyAccessToken,
-  verifyRefreshToken,
-  extractTokenFromHeader,
-  authenticateToken,
-  optionalAuth,
-  requireRole,
-  requirePermission,
-};
+export * from './auth';

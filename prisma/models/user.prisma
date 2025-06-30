@@ -22,6 +22,7 @@ model User {
   sessions     Session[]
   auditLogs    AuditLog[]
   createdTests IELTSTest[]  @relation("TestCreator")
+  otpRecords   OTPVerification[]
 
   @@map("users")
 }
@@ -46,4 +47,26 @@ model UserProfile {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("user_profiles")
+}
+
+// OTP Verification for phone/email verification and password reset
+model OTPVerification {
+  id             String   @id @default(uuid())
+  identifier     String   // email or phone
+  identifierType String   // 'email' or 'phone'
+  otp            String
+  purpose        String   // 'login', 'password_reset', 'email_verification'
+  userId         String?
+  expiresAt      DateTime
+  attempts       Int      @default(0)
+  maxAttempts    Int      @default(3)
+  isUsed         Boolean  @default(false)
+  createdAt      DateTime @default(now())
+
+  // Relations
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([identifier, purpose, isUsed])
+  @@index([expiresAt])
+  @@map("otp_verifications")
 } 

@@ -12,47 +12,9 @@ export function initializePrisma(): any {
       // Try to dynamically import PrismaClient
       const { PrismaClient } = require('@prisma/client');
       prisma = new PrismaClient({
-        log: [
-          {
-            emit: 'event',
-            level: 'query',
-          },
-          {
-            emit: 'event',
-            level: 'error',
-          },
-          {
-            emit: 'event',
-            level: 'info',
-          },
-          {
-            emit: 'event',
-            level: 'warn',
-          },
-        ],
-      });
-
-      // Set up logging for Prisma events only in development
-      if (process.env.NODE_ENV === 'development') {
-        prisma.$on('query', (e: any) => {
-          logInfo('Prisma Query', {
-            query: e.query,
-            params: e.params,
-            duration: `${e.duration}ms`,
-          });
-        });
-      }
-
-      prisma.$on('error', (e: any) => {
-        logError('Prisma Error', e);
-      });
-
-      prisma.$on('info', (e: any) => {
-        logInfo('Prisma Info', { message: e.message });
-      });
-
-      prisma.$on('warn', (e: any) => {
-        logInfo('Prisma Warning', { message: e.message });
+        log: process.env.NODE_ENV === 'development' 
+          ? ['query', 'info', 'warn', 'error']
+          : ['error'],
       });
 
       logInfo('Prisma client initialized successfully');
