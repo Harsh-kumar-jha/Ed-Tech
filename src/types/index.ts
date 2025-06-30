@@ -27,18 +27,42 @@ export interface PaginationQuery {
   sortOrder?: 'asc' | 'desc';
 }
 
-// User types
-export interface User extends BaseEntity {
+// User types (extending Prisma generated types)
+export interface User {
+  id: string;
   email: string;
   username: string;
   firstName: string;
   lastName: string;
-  role: 'student' | 'instructor' | 'admin' | 'super_admin';
+  password: string;
+  role: UserRole;
   isActive: boolean;
   isEmailVerified: boolean;
-  lastLoginAt?: Date;
-  profileId?: string;
+  emailVerifiedAt: Date | null;
+  lastLoginAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
 }
+
+// User without password for API responses
+export interface UserWithoutPassword {
+  id: string;
+  email: string;
+  username: string;
+  firstName: string;
+  lastName: string;
+  role: UserRole;
+  isActive: boolean;
+  isEmailVerified: boolean;
+  emailVerifiedAt: Date | null;
+  lastLoginAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+  profile?: UserProfile | null;
+}
+
+// User types
+export type UserRole = 'STUDENT' | 'INSTRUCTOR' | 'ADMIN' | 'SUPER_ADMIN';
 
 export interface UserProfile extends BaseEntity {
   userId: string;
@@ -50,7 +74,7 @@ export interface UserProfile extends BaseEntity {
   avatar?: string;
   bio?: string;
   targetScore?: number;
-  currentLevel?: 'beginner' | 'intermediate' | 'advanced';
+  currentLevel?: DifficultyLevel;
   studyGoals?: string[];
 }
 
@@ -60,6 +84,7 @@ export interface CreateUserRequest {
   firstName: string;
   lastName: string;
   password: string;
+  phone?: string;
   role?: 'student' | 'instructor';
 }
 
@@ -69,6 +94,45 @@ export interface LoginRequest {
   password: string;
 }
 
+// Enhanced auth types for OTP support
+export interface PhoneLoginRequest {
+  phone: string;
+}
+
+export interface VerifyOTPRequest {
+  phone?: string;
+  email?: string;
+  otp: string;
+  type: 'login' | 'password_reset';
+}
+
+export interface ForgotPasswordRequest {
+  email?: string;
+  phone?: string;
+}
+
+export interface ResetPasswordRequest {
+  token?: string;
+  otp?: string;
+  email?: string;
+  phone?: string;
+  password: string;
+  confirmPassword: string;
+}
+
+export interface OTPRecord {
+  id: string;
+  identifier: string; // email or phone
+  identifierType: 'email' | 'phone';
+  otp: string;
+  purpose: 'login' | 'password_reset' | 'email_verification';
+  userId?: string;
+  expiresAt: Date;
+  attempts: number;
+  isUsed: boolean;
+  createdAt: Date;
+}
+
 export interface AuthTokens {
   accessToken: string;
   refreshToken: string;
@@ -76,9 +140,9 @@ export interface AuthTokens {
 }
 
 // IELTS Test types
-export type IELTSModule = 'reading' | 'listening' | 'writing' | 'speaking';
-export type TestStatus = 'not_started' | 'in_progress' | 'completed' | 'submitted' | 'graded' | 'expired';
-export type DifficultyLevel = 'beginner' | 'intermediate' | 'advanced';
+export type IELTSModule = 'READING' | 'LISTENING' | 'WRITING' | 'SPEAKING';
+export type TestStatus = 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED' | 'SUBMITTED' | 'GRADED' | 'EXPIRED';
+export type DifficultyLevel = 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED';
 
 export interface IELTSTest extends BaseEntity {
   title: string;
