@@ -1,0 +1,1 @@
+export type TestStatus = 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED' | 'SUBMITTED' | 'GRADED' | 'EXPIRED';

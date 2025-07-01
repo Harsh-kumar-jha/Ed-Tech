@@ -16,6 +16,7 @@ import {
 } from './utils/exceptions';
 import { accessLogger, logInfo, logError } from './utils/logger';
 import { initializePrisma, checkDatabaseHealth } from './utils/database';
+import { requestLogger } from './common';
 
 // Import routes
 import { 
@@ -37,13 +38,16 @@ export class Server {
 
   constructor() {
     try {
-      console.log('🔧 Initializing Express app...');
+      logInfo('Server initialization started', { component: 'Server' });
       this.app = express();
       
-      console.log('🔧 Creating HTTP server...');
+      logInfo('HTTP server created', { component: 'Server' });
       this.server = createServer(this.app);
       
-      console.log('🔧 Initializing Socket.IO...');
+      logInfo('Socket.IO initialized', { 
+        component: 'Server',
+        allowedOrigins: config.ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
+      });
       this.io = new SocketIOServer(this.server, {
         cors: {
           origin: config.ALLOWED_ORIGINS.split(',').map(origin => origin.trim()),
@@ -51,16 +55,16 @@ export class Server {
         },
       });
       
-      console.log('🔧 Starting initialization methods...');
+      logInfo('Starting server initialization methods', { component: 'Server' });
       this.initializeDatabase();
       this.initializeMiddleware();
       this.initializeRoutes();
       this.initializeSocketIO();
       this.initializeErrorHandling();
       
-      console.log('✅ Server constructor completed successfully');
+      logInfo('Server constructor completed successfully', { component: 'Server' });
     } catch (error) {
-      console.error('❌ Error in Server constructor:', error);
+      logError('Error in Server constructor', error);
       throw error;
     }
   }
@@ -111,7 +115,10 @@ export class Server {
     const limiter = rateLimit(rateLimitConfig);
     this.app.use('/api/', limiter);
 
-    // Logging
+    // Custom request logging middleware
+    this.app.use(requestLogger);
+
+    // Morgan logging (in addition to custom logger)
     if (config.NODE_ENV === 'development') {
       this.app.use(morgan('dev'));
     } else {
@@ -167,13 +174,14 @@ export class Server {
 
   private initializeRoutes(): void {
     try {
-      console.log('🔧 Initializing routes...');
+      logInfo('Routes initialization started', { component: 'Server' });
       
       // API Routes
       const apiRouter = express.Router();
       
       // Test endpoint
       apiRouter.get('/test', (req, res) => {
+        logInfo('Test endpoint accessed', { component: 'Router', endpoint: '/test' });
         res.json({
           success: true,
           message: 'IELTS EdTech Platform API is running!',
@@ -181,20 +189,21 @@ export class Server {
         });
       });
 
-      console.log('🔧 Mounting service routes...');
-      console.log('- Mounting auth routes...');
+      logInfo('Mounting service routes', { component: 'Server' });
+      
+      logInfo('Auth routes mounted', { component: 'Router', route: '/auth' });
       apiRouter.use('/auth', authRoutes);
       
-      console.log('- Mounting IELTS routes...');
+      logInfo('IELTS routes mounted', { component: 'Router', route: '/ielts' });
       apiRouter.use('/ielts', ieltsRoutes);
       
-      console.log('- Mounting profile routes...');
+      logInfo('Profile routes mounted', { component: 'Router', route: '/profile' });
       apiRouter.use('/profile', profileRoutes);
       
-      console.log('- Mounting leaderboard routes...');
+      logInfo('Leaderboard routes mounted', { component: 'Router', route: '/leaderboard' });
       apiRouter.use('/leaderboard', leaderboardRoutes);
       
-      console.log('- Mounting AI routes...');
+      logInfo('AI routes mounted', { component: 'Router', route: '/ai' });
       apiRouter.use('/ai', aiRoutes);
       
       // Mount API routes
@@ -203,9 +212,12 @@ export class Server {
       // Static files (if needed)
       this.app.use('/uploads', express.static('uploads'));
       
-      console.log('✅ Routes initialized successfully');
+      logInfo('Routes initialized successfully', { 
+        component: 'Server',
+        apiVersion: config.API_VERSION
+      });
     } catch (error) {
-      console.error('❌ Error initializing routes:', error);
+      logError('Error initializing routes', error);
       throw error;
     }
   }
@@ -245,12 +257,14 @@ export class Server {
 
   public start(): void {
     try {
-      console.log('🔧 Starting server...');
+      logInfo('Server startup initiated', { 
+        component: 'Server',
+        port: config.PORT,
+        environment: config.NODE_ENV
+      });
       const port = config.PORT;
-      console.log(`🔧 Attempting to listen on port ${port}...`);
       
       this.server.listen(port, () => {
-        console.log('🔧 Server listen callback triggered');
         logInfo(`🚀 Server started successfully`, {
           port,
           environment: config.NODE_ENV,
@@ -288,8 +302,7 @@ export class Server {
       process.on('SIGINT', () => gracefulShutdown('SIGINT'));
       
     } catch (error) {
-      console.error('❌ Error starting server:', error);
-      logError('Failed to start server', error);
+      logError('Error starting server', error);
       process.exit(1);
     }
   }

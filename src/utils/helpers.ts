@@ -1,4 +1,4 @@
-import { ApiResponse, PaginationQuery } from '@/types';
+import { ApiResponse, PaginationQuery } from '@/interface';
 import { DEFAULTS } from '@/constants';
 
 // UUID generation
@@ -221,7 +221,7 @@ export const objectHelpers = {
   },
 
   // Pick specific keys from object
-  pick: <T, K extends keyof T>(obj: T, keys: K[]): Pick<T, K> => {
+  pick: <T extends object, K extends keyof T>(obj: T, keys: K[]): Pick<T, K> => {
     const result = {} as Pick<T, K>;
     keys.forEach(key => {
       if (key in obj) {

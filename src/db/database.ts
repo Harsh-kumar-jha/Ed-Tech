@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import { TransactionCallback } from '@/types';
+import { TransactionCallback } from '../types';
 import { logError, logInfo } from '../utils/logger';
 import { DatabaseError } from '../utils/exceptions';
 
@@ -18,28 +18,16 @@ export const initializePrisma = (): PrismaClient => {
       ],
     });
 
-    // Setup logging
-    prisma.$on('query', (e) => {
-      if (process.env.NODE_ENV === 'development') {
-        logInfo('Database Query', {
-          query: e.query,
-          params: e.params,
-          duration: e.duration,
-        });
-      }
+      // Setup logging for development
+  if (process.env.NODE_ENV === 'development') {
+    prisma.$on('query' as never, (e: any) => {
+      logInfo('Database Query', {
+        query: e.query,
+        params: e.params,
+        duration: e.duration,
+      });
     });
-
-    prisma.$on('error', (e) => {
-      logError('Database Error', e);
-    });
-
-    prisma.$on('info', (e) => {
-      logInfo('Database Info', { message: e.message });
-    });
-
-    prisma.$on('warn', (e) => {
-      logInfo('Database Warning', { message: e.message });
-    });
+  }
   }
 
   return prisma;

@@ -1,6 +1,8 @@
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { Request, Response, NextFunction } from 'express';
+import { logError } from '../../../utils/logger';
+import { logAuthOperation } from '../../../common';
 
 // Environment variables with defaults
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-key';
@@ -15,7 +17,8 @@ export const hashPassword = async (password: string): Promise<string> => {
     const salt = await bcrypt.genSalt(BCRYPT_SALT_ROUNDS);
     return await bcrypt.hash(password, salt);
   } catch (error) {
-    console.error('Password hashing failed', error);
+    // Log error without exposing password details
+    logError('Password hashing failed', error, { component: 'AuthUtils' });
     throw new Error('Password hashing failed');
   }
 };
@@ -24,7 +27,7 @@ export const comparePassword = async (password: string, hashedPassword: string):
   try {
     return await bcrypt.compare(password, hashedPassword);
   } catch (error) {
-    console.error('Password comparison failed', error);
+    logError('Password comparison failed', error, { component: 'AuthUtils' });
     return false;
   }
 };
@@ -119,9 +122,10 @@ export const authenticateToken = async (req: Request, res: Response, next: NextF
       role: payload.role,
     };
 
+    logAuthOperation('Token authentication', payload.userId, payload.email, true);
     next();
   } catch (error: any) {
-    console.error('Authentication failed', error);
+    logAuthOperation('Token authentication failed', undefined, undefined, false, { error: error.message });
     res.status(401).json({
       success: false,
       error: {

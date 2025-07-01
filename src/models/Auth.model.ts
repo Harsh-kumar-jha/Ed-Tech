@@ -11,9 +11,9 @@ import {
   LoginRequest, 
   ServiceResponse, 
   User,
-  UserWithoutPassword,
-  UserRole 
-} from '../types';
+  UserWithoutPassword
+} from '../interface';
+import { UserRole } from '../types';
 import { logInfo, logError } from '../utils/logger';
 import { ConflictError, AuthError, DatabaseError } from '../utils/exceptions';
 

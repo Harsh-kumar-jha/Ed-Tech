@@ -1,0 +1,1 @@
+export type IELTSModule = 'READING' | 'LISTENING' | 'WRITING' | 'SPEAKING';
