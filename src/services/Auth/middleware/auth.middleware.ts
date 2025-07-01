@@ -285,4 +285,56 @@ export const validateLogout = (req: Request, res: Response, next: NextFunction):
   }
 
   next();
+};
+
+// Send email verification validation middleware
+export const validateSendEmailVerification = (req: Request, res: Response, next: NextFunction): void => {
+  const { email } = req.body;
+  const errors: string[] = [];
+
+  if (!email || !isValidEmail(email)) {
+    errors.push('Valid email is required');
+  }
+
+  if (errors.length > 0) {
+    res.status(400).json({
+      success: false,
+      error: {
+        message: 'Validation failed',
+        code: 'VALIDATION_ERROR',
+        details: errors,
+      },
+    });
+    return;
+  }
+
+  next();
+};
+
+// Verify email validation middleware
+export const validateVerifyEmail = (req: Request, res: Response, next: NextFunction): void => {
+  const { email, otp } = req.body;
+  const errors: string[] = [];
+
+  if (!email || !isValidEmail(email)) {
+    errors.push('Valid email is required');
+  }
+
+  if (!otp || !isValidOTP(otp)) {
+    errors.push('Valid 6-digit OTP is required');
+  }
+
+  if (errors.length > 0) {
+    res.status(400).json({
+      success: false,
+      error: {
+        message: 'Validation failed',
+        code: 'VALIDATION_ERROR',
+        details: errors,
+      },
+    });
+    return;
+  }
+
+  next();
 }; 

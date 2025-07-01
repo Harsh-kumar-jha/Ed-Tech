@@ -16,9 +16,11 @@ import {
 import { UserRole } from '../types';
 import { logInfo, logError } from '../utils/logger';
 import { ConflictError, AuthError, DatabaseError } from '../utils/exceptions';
+import { UnifiedCommunicationService } from '../common/unified-communication.service';
 
 export class AuthModel {
   private db = getPrismaClient();
+  private communicationService = new UnifiedCommunicationService();
 
   // Create new user
   async createUser(userData: CreateUserRequest): Promise<ServiceResponse<UserWithoutPassword>> {
@@ -407,7 +409,7 @@ export class AuthModel {
     identifier: string, 
     identifierType: 'email' | 'phone', 
     purpose: 'login' | 'password_reset' | 'email_verification'
-  ): Promise<ServiceResponse<{ otpId: string }>> {
+  ): Promise<ServiceResponse<{ otpId: string; sent?: boolean; messageId?: string }>> {
     try {
       // Generate 6-digit OTP
       const otp = Math.floor(100000 + Math.random() * 900000).toString();
@@ -426,48 +428,112 @@ export class AuthModel {
         userId = userResult.data?.id || null;
       }
 
-      // Invalidate any existing OTPs for this identifier and purpose
-      await this.db.oTPVerification.updateMany({
+      // Use upsert pattern to reuse existing OTP records and save database memory
+      // First, try to find an existing OTP record for this identifier and purpose
+      const existingOtp = await this.db.oTPVerification.findFirst({
         where: {
           identifier: identifier.toLowerCase(),
           purpose,
           isUsed: false,
         },
-        data: {
-          isUsed: true,
-        },
+        orderBy: { createdAt: 'desc' },
       });
 
-      // Create new OTP record
-      const otpRecord = await this.db.oTPVerification.create({
-        data: {
-          identifier: identifier.toLowerCase(),
-          identifierType,
-          otp,
+      let otpRecord;
+      if (existingOtp) {
+        // Update existing record with new OTP, reset attempts, and extend expiry
+        otpRecord = await this.db.oTPVerification.update({
+          where: { id: existingOtp.id },
+          data: {
+            otp,
+            expiresAt,
+            attempts: 0, // Reset attempts for new OTP
+            isUsed: false, // Ensure it's marked as unused
+            // Keep the same userId, identifierType, purpose, maxAttempts
+            // Update createdAt is not needed - we track when OTP was refreshed via expiresAt
+          },
+        });
+
+        logInfo('OTP record updated (reused existing)', { 
+          otpId: otpRecord.id, 
+          identifier: identifier.toLowerCase(), 
           purpose,
-          userId,
-          expiresAt,
-          attempts: 0,
-          maxAttempts: 3,
-          isUsed: false,
-        },
-      });
+          previousOtp: existingOtp.otp,
+          newOtp: otp
+        });
+      } else {
+        // Create new OTP record only if none exists
+        otpRecord = await this.db.oTPVerification.create({
+          data: {
+            identifier: identifier.toLowerCase(),
+            identifierType,
+            otp,
+            purpose,
+            userId,
+            expiresAt,
+            attempts: 0,
+            maxAttempts: 3,
+            isUsed: false,
+          },
+        });
 
-      logInfo('OTP generated successfully', { 
-        otpId: otpRecord.id, 
-        identifier: identifier.toLowerCase(), 
-        purpose 
-      });
+                 logInfo('OTP record created (new)', { 
+           otpId: otpRecord.id, 
+           identifier: identifier.toLowerCase(), 
+           purpose 
+         });
+       }
 
-      // TODO: Send OTP via SMS/Email service
-      // For now, we'll just log it for testing (remove in production)
+      // Send OTP via Brevo service
+      let sendResult;
+      try {
+        if (identifierType === 'email') {
+          sendResult = await this.communicationService.sendOTPEmail(
+            identifier, 
+            otp, 
+            purpose
+          );
+        } else if (identifierType === 'phone') {
+          sendResult = await this.communicationService.sendOTPSMS(
+            identifier, 
+            otp, 
+            purpose
+          );
+        }
+
+        if (sendResult && !sendResult.success) {
+          logError('Failed to send OTP', new Error(sendResult.error || 'Unknown error'), { 
+            identifier, 
+            identifierType, 
+            purpose 
+          });
+          // Don't fail the entire operation if sending fails
+          // The OTP is still valid in the database
+        } else if (sendResult) {
+          logInfo('OTP sent successfully', { 
+            messageId: sendResult.data?.messageId,
+            identifier: identifier.toLowerCase(),
+            identifierType,
+            purpose 
+          });
+        }
+      } catch (error) {
+        logError('Error sending OTP', error, { identifier, identifierType, purpose });
+        // Continue - OTP is still valid in database
+      }
+
+      // Log OTP in development for testing (remove in production)
       if (process.env.NODE_ENV === 'development') {
         logInfo('Generated OTP (DEV ONLY)', { otp, identifier });
       }
 
       return {
         success: true,
-        data: { otpId: otpRecord.id },
+        data: { 
+          otpId: otpRecord.id,
+          sent: sendResult?.success || false,
+          messageId: sendResult?.data?.messageId
+        },
       };
     } catch (error) {
       logError('Failed to generate OTP', error, { identifier, identifierType, purpose });
@@ -563,6 +629,52 @@ export class AuthModel {
     } catch (error) {
       logError('Failed to verify OTP', error, { identifier, identifierType, purpose });
       throw new DatabaseError('Failed to verify OTP');
+    }
+  }
+
+  /**
+   * Clean up expired and used OTP records to save database space
+   * Should be called periodically (e.g., via cron job)
+   */
+  async cleanupExpiredOTPs(): Promise<ServiceResponse<{ deletedCount: number }>> {
+    try {
+      // Delete OTPs that are either:
+      // 1. Expired (expiresAt < now)
+      // 2. Used (isUsed = true) and older than 24 hours
+      const oneDayAgo = new Date();
+      oneDayAgo.setHours(oneDayAgo.getHours() - 24);
+
+      const result = await this.db.oTPVerification.deleteMany({
+        where: {
+          OR: [
+            // Expired OTPs
+            {
+              expiresAt: { lt: new Date() }
+            },
+            // Used OTPs older than 24 hours
+            {
+              isUsed: true,
+              createdAt: { lt: oneDayAgo }
+            }
+          ]
+        }
+      });
+
+      logInfo('OTP cleanup completed', { 
+        deletedCount: result.count,
+        cleanupTime: new Date().toISOString()
+      });
+
+      return {
+        success: true,
+        data: { deletedCount: result.count }
+      };
+    } catch (error) {
+      logError('Failed to cleanup expired OTPs', error);
+      return {
+        success: false,
+        error: 'Failed to cleanup expired OTPs'
+      };
     }
   }
 

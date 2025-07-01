@@ -15,6 +15,8 @@ import {
   validateResetPassword,
   validateRefreshToken,
   validateLogout,
+  validateSendEmailVerification,
+  validateVerifyEmail,
 } from '../middleware/auth.middleware';
 
 const router: RouterType = Router();
@@ -43,5 +45,26 @@ router.post('/refresh-token', validateRefreshToken, authController.refreshToken.
 
 // POST /auth/logout - Logout (invalidate session)
 router.post('/logout', validateLogout, authController.logout.bind(authController));
+
+// POST /auth/send-email-verification - Send email verification OTP
+router.post('/send-email-verification', validateSendEmailVerification, authController.sendEmailVerification.bind(authController));
+
+// POST /auth/verify-email - Verify email address with OTP
+router.post('/verify-email', validateVerifyEmail, authController.verifyEmail.bind(authController));
+
+// Development only endpoints
+if (process.env.NODE_ENV === 'development') {
+  // GET /auth/debug-config - Debug environment configuration
+  router.get('/debug-config', authController.debugConfig.bind(authController));
+  
+  // GET /auth/test-2factor-api - Test 2Factor API connectivity
+  router.get('/test-2factor-api', authController.test2FactorAPI.bind(authController));
+  
+  // POST /auth/test-phone-formatting - Test phone number formatting
+  router.post('/test-phone-formatting', authController.testPhoneFormatting.bind(authController));
+  
+  // POST /auth/debug-sms-send - Debug actual SMS sending with detailed error info
+  router.post('/debug-sms-send', authController.debugSMSSending.bind(authController));
+}
 
 export default router; 

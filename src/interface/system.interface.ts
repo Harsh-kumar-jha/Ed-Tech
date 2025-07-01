@@ -15,6 +15,15 @@ export interface EnvironmentConfig {
   OLLAMA_MODEL: string;
   MAX_FILE_SIZE: number;
   ALLOWED_ORIGINS: string;
+  // Brevo Configuration (Email OTP)
+  BREVO_API_KEY: string;
+  BREVO_SMS_SENDER: string;
+  BREVO_EMAIL_SENDER: string;
+  BREVO_EMAIL_SENDER_NAME: string;
+  // 2Factor Configuration (SMS OTP)
+  TWOFACTOR_API_KEY: string;
+  TWOFACTOR_SMS_SENDER: string;
+  TWOFACTOR_BASE_URL: string;
 }
 
 export interface FileUpload {

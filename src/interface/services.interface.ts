@@ -4,12 +4,12 @@
  */
 
 import { 
-  ServiceResponse, 
   CreateUserRequest, 
   LoginRequest, 
   User, 
   UserWithoutPassword 
 } from './index';
+import { ServiceResponse } from './base.interface';
 
 // Base service interface
 export interface IBaseService {
@@ -39,7 +39,7 @@ export interface ITokenService extends IBaseService {
 
 // OTP service interface
 export interface IOTPService extends IBaseService {
-  generateOTP(identifier: string, identifierType: 'email' | 'phone', purpose: string): Promise<ServiceResponse<{ otpId: string }>>;
+  generateOTP(identifier: string, identifierType: 'email' | 'phone', purpose: string): Promise<ServiceResponse<{ otpId: string; sent?: boolean; messageId?: string }>>;
   verifyOTP(identifier: string, identifierType: 'email' | 'phone', otp: string, purpose: string): Promise<ServiceResponse<{ user?: any; verified: boolean }>>;
 }
 
@@ -60,4 +60,79 @@ export interface IResponseService extends IBaseService {
 export interface IErrorService extends IBaseService {
   handleError(error: any, res?: any, context?: any): void;
   createError(message: string, code?: string, statusCode?: number): Error;
+}
+
+// Communication service interface
+// Export ServiceResponse for other modules
+export { ServiceResponse } from './base.interface';
+
+export interface ICommunicationService extends IBaseService {
+  sendSMS(to: string, message: string, options?: SMSOptions): Promise<ServiceResponse<SMSSendResult>>;
+  sendEmail(to: string, subject: string, content: EmailContent, options?: EmailOptions): Promise<ServiceResponse<EmailSendResult>>;
+  sendOTPSMS(phone: string, otp: string, purpose: 'login' | 'password_reset' | 'email_verification'): Promise<ServiceResponse<SMSSendResult>>;
+  sendOTPEmail(email: string, otp: string, purpose: 'login' | 'password_reset' | 'email_verification'): Promise<ServiceResponse<EmailSendResult>>;
+}
+
+export interface SMSOptions {
+  sender?: string;
+  scheduledAt?: Date;
+  tag?: string;
+}
+
+export interface EmailOptions {
+  sender?: {
+    email: string;
+    name?: string;
+  };
+  replyTo?: string;
+  tags?: string[];
+  scheduledAt?: Date;
+  templateId?: number;
+  params?: Record<string, any>;
+}
+
+export interface EmailContent {
+  type: 'text' | 'html' | 'template';
+  content: string;
+  textContent?: string; // for HTML emails, provide plain text fallback
+}
+
+export interface SMSSendResult {
+  messageId: string;
+  status: 'sent' | 'failed' | 'scheduled';
+  creditsUsed?: number;
+  recipient: string;
+}
+
+export interface EmailSendResult {
+  messageId: string;
+  status: 'sent' | 'failed' | 'scheduled';
+  recipient: string;
+}
+
+export interface IUserVerificationService extends IBaseService {
+  checkPhoneVerificationStatus(phone: string): Promise<ServiceResponse<UserVerificationStatus>>;
+  isPhoneNumberRegistered(phone: string): Promise<ServiceResponse<boolean>>;
+  getUserByPhone(phone: string): Promise<ServiceResponse<UserBasicInfo | null>>;
+}
+
+export interface UserVerificationStatus {
+  isRegistered: boolean;
+  isVerified: boolean;
+  canLogin: boolean;
+  user?: UserBasicInfo;
+  message: string;
+  actionRequired: 'login' | 'register' | 'verify_email' | 'account_inactive';
+}
+
+export interface UserBasicInfo {
+  id: string;
+  email: string;
+  username: string;
+  firstName: string;
+  lastName: string;
+  phone?: string;
+  isActive: boolean;
+  isEmailVerified: boolean;
+  role: string;
 } 

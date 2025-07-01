@@ -152,11 +152,11 @@ export const questionSchemas = {
     questionNumber: Joi.number().integer().min(1).required(),
     questionType: Joi.string().valid('multiple_choice', 'true_false', 'fill_blank', 'essay', 'audio_response').required(),
     questionText: Joi.string().min(10).max(2000).required(),
-          options: Joi.array().items(Joi.string().max(500)).when('questionType', {
-        is: Joi.string().valid('multiple_choice', 'true_false'),
+    options: Joi.array().items(Joi.string().max(500)).when('questionType', {
+      is: Joi.string().valid('multiple_choice', 'true_false'),
         then: Joi.array().required().min(2).max(10),
-        otherwise: Joi.optional(),
-      }),
+      otherwise: Joi.optional(),
+    }),
     correctAnswer: Joi.string().when('questionType', {
       is: 'essay',
       then: Joi.optional(),

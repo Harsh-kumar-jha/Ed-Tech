@@ -17,6 +17,7 @@ import {
 import { accessLogger, logInfo, logError } from './utils/logger';
 import { initializePrisma, checkDatabaseHealth } from './utils/database';
 import { requestLogger } from './common';
+import { cleanupJobs } from './utils/cleanup-jobs';
 
 // Import routes
 import { 
@@ -56,7 +57,7 @@ export class Server {
       });
       
       logInfo('Starting server initialization methods', { component: 'Server' });
-      this.initializeDatabase();
+      // Database initialization moved to start() method (async)
       this.initializeMiddleware();
       this.initializeRoutes();
       this.initializeSocketIO();
@@ -255,13 +256,17 @@ export class Server {
     this.app.use(globalErrorHandler);
   }
 
-  public start(): void {
+  public async start(): Promise<void> {
     try {
       logInfo('Server startup initiated', { 
         component: 'Server',
         port: config.PORT,
         environment: config.NODE_ENV
       });
+
+      // Initialize database before starting server
+      await this.initializeDatabase();
+      
       const port = config.PORT;
       
       this.server.listen(port, () => {
@@ -280,6 +285,11 @@ export class Server {
             test: `http://localhost:${port}/api/${config.API_VERSION}/test`,
           });
         }
+
+        // Initialize periodic cleanup jobs
+        logInfo('🧹 Initializing periodic cleanup jobs');
+        cleanupJobs.startPeriodicCleanup(24); // Run every 24 hours
+        logInfo('✅ Cleanup jobs scheduled successfully');
       });
 
       // Graceful shutdown
