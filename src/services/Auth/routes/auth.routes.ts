@@ -5,7 +5,7 @@
 
 import { Router } from 'express';
 import type { Router as RouterType } from 'express';
-import { AuthController } from '../controller/auth.controller';
+import { AuthMainController } from '../controller/auth.main.controller';
 import {
   validateRegister,
   validateLogin,
@@ -18,7 +18,7 @@ import {
 } from '../middleware/auth.middleware';
 
 const router: RouterType = Router();
-const authController = new AuthController();
+const authController = new AuthMainController();
 
 // POST /auth/register - Register new user
 router.post('/register', validateRegister, authController.register.bind(authController));

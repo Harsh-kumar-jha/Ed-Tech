@@ -1,5 +1,5 @@
 import dotenv from 'dotenv';
-import { EnvironmentConfig } from '@/types';
+import { EnvironmentConfig } from '@/interface';
 
 // Load environment variables
 dotenv.config();
