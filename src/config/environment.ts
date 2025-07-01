@@ -8,6 +8,8 @@ dotenv.config();
 const requiredEnvVars = [
   'DATABASE_URL',
   'JWT_SECRET',
+  'BREVO_API_KEY',
+  'TWOFACTOR_API_KEY',
 ];
 
 const missingEnvVars = requiredEnvVars.filter(envVar => !process.env[envVar]);
@@ -44,6 +46,17 @@ export const config: EnvironmentConfig = {
   
   // CORS
   ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS || 'http://localhost:3000',
+  
+  // Brevo Configuration
+  BREVO_API_KEY: process.env.BREVO_API_KEY!,
+  BREVO_SMS_SENDER: process.env.BREVO_SMS_SENDER || 'EdTech',
+  BREVO_EMAIL_SENDER: process.env.BREVO_EMAIL_SENDER || 'noreply@edtech.com',
+  BREVO_EMAIL_SENDER_NAME: process.env.BREVO_EMAIL_SENDER_NAME || 'EdTech Platform',
+
+  // 2Factor Configuration
+  TWOFACTOR_API_KEY: process.env.TWOFACTOR_API_KEY!,
+  TWOFACTOR_SMS_SENDER: process.env.TWOFACTOR_SMS_SENDER || 'EDTECH',
+  TWOFACTOR_BASE_URL: process.env.TWOFACTOR_BASE_URL || 'https://2factor.in/API/V1',
 };
 
 // Derived configuration

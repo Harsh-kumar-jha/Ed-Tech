@@ -15,7 +15,7 @@ export class OTPService implements IOTPService {
     identifier: string, 
     identifierType: 'email' | 'phone', 
     purpose: string
-  ): Promise<ServiceResponse<{ otpId: string }>> {
+  ): Promise<ServiceResponse<{ otpId: string; sent?: boolean; messageId?: string }>> {
     return this.authModel.generateOTP(
       identifier, 
       identifierType, 

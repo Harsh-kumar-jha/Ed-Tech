@@ -7,7 +7,7 @@ async function bootstrap() {
     logInfo('🔥 Starting IELTS EdTech Platform...');
     
     const server = new Server();
-    server.start();
+    await server.start();
     
   } catch (error) {
     logError('❌ Failed to start server', error);

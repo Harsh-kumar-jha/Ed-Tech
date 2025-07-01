@@ -42,6 +42,7 @@
     "pnpm": ">=8.0.0"
   },
   "dependencies": {
+    "@getbrevo/brevo": "^2.5.0",
     "@prisma/client": "^6.10.1",
     "axios": "^1.10.0",
     "bcryptjs": "^3.0.2",
