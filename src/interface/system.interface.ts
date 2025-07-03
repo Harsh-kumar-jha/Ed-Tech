@@ -26,6 +26,12 @@ export interface EnvironmentConfig {
   TWOFACTOR_API_KEY: string;
   TWOFACTOR_SMS_SENDER: string;
   TWOFACTOR_BASE_URL: string;
+  GOOGLE_CLIENT_ID: string;
+  GOOGLE_CLIENT_SECRET: string;
+  GOOGLE_CALLBACK_URL: string;
+  MICROSOFT_CLIENT_ID: string;
+  MICROSOFT_CLIENT_SECRET: string;
+  MICROSOFT_CALLBACK_URL: string;
 }
 
 export interface FileUpload {

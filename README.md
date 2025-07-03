@@ -469,6 +469,45 @@ This project is licensed under the MIT License.
 
 For support, please contact the development team or create an issue in the repository.
 
+## 🔐 OAuth 2.0 Authentication (Google & Microsoft)
+
+This platform supports OAuth 2.0 login with Google and Microsoft accounts, following best security practices.
+
+### Setup
+1. **Register your app** with Google and Microsoft to obtain client IDs and secrets.
+2. **Add the following to your `.env` file:**
+   ```env
+   # Google OAuth
+   GOOGLE_CLIENT_ID=your-google-client-id
+   GOOGLE_CLIENT_SECRET=your-google-client-secret
+   GOOGLE_CALLBACK_URL=http://localhost:3000/api/v1/auth/google/callback
+
+   # Microsoft OAuth
+   MICROSOFT_CLIENT_ID=your-microsoft-client-id
+   MICROSOFT_CLIENT_SECRET=your-microsoft-client-secret
+   MICROSOFT_CALLBACK_URL=http://localhost:3000/api/v1/auth/microsoft/callback
+   ```
+3. **Install required dependencies:**
+   ```bash
+   pnpm install passport passport-google-oauth20 passport-azure-ad express-session
+   pnpm install --save-dev @types/express-session @types/passport @types/passport-google-oauth20 @types/passport-azure-ad
+   ```
+
+### Usage
+- **Google Login:**
+  - `GET /api/v1/auth/google` → Redirects to Google login
+  - `GET /api/v1/auth/google/callback` → Handles Google OAuth callback
+- **Microsoft Login:**
+  - `GET /api/v1/auth/microsoft` → Redirects to Microsoft login
+  - `POST /api/v1/auth/microsoft/callback` → Handles Microsoft OAuth callback
+
+On successful authentication, the API returns JWT access and refresh tokens. You can use these tokens to access protected endpoints.
+
+### Security Notes
+- OAuth provider IDs are stored in the user model for account linking.
+- No passwords are stored for OAuth-only users.
+- All sensitive credentials are managed via environment variables.
+
 ---
 
 **Happy Coding! 🎉** 

@@ -18,6 +18,7 @@ import {
   validateSendEmailVerification,
   validateVerifyEmail,
 } from '../middleware/auth.middleware';
+import * as oauthController from '../controller/oauth.controller';
 
 const router: RouterType = Router();
 const authController = new AuthMainController();
@@ -51,6 +52,14 @@ router.post('/send-email-verification', validateSendEmailVerification, authContr
 
 // POST /auth/verify-email - Verify email address with OTP
 router.post('/verify-email', validateVerifyEmail, authController.verifyEmail.bind(authController));
+
+// Google OAuth
+router.get('/auth/google', oauthController.googleAuth);
+router.get('/auth/google/callback', oauthController.googleCallback);
+
+// Microsoft OAuth
+router.get('/auth/microsoft', oauthController.microsoftAuth);
+router.post('/auth/microsoft/callback', oauthController.microsoftCallback);
 
 // Development only endpoints
 if (process.env.NODE_ENV === 'development') {

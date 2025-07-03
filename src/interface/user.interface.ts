@@ -19,6 +19,9 @@ export interface User {
   lastLoginAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
+  googleId?: string;
+  microsoftId?: string;
+  provider?: string;
 }
 
 export interface UserWithoutPassword {
@@ -35,6 +38,9 @@ export interface UserWithoutPassword {
   createdAt: Date;
   updatedAt: Date;
   profile?: UserProfile | null;
+  googleId?: string;
+  microsoftId?: string;
+  provider?: string;
 }
 
 export interface UserProfile extends BaseEntity {
