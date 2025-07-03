@@ -29,7 +29,9 @@ export const config: EnvironmentConfig = {
   
   // JWT Configuration
   JWT_SECRET: process.env.JWT_SECRET!,
-  JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || '7d',
+  JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || '1h', // Access token: 1 hour
+  JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET + '_refresh',
+  JWT_REFRESH_EXPIRES_IN: process.env.JWT_REFRESH_EXPIRES_IN || '1d', // Refresh token: 1 day
   
   // Password hashing
   BCRYPT_SALT_ROUNDS: parseInt(process.env.BCRYPT_SALT_ROUNDS || '12'),

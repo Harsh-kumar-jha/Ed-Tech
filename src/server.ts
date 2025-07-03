@@ -78,14 +78,16 @@ export class Server {
       // Check database health
       const isHealthy = await checkDatabaseHealth();
       if (!isHealthy) {
-        logError('Database health check failed');
-        process.exit(1);
+        logError('Database health check failed - continuing without database connection');
+        logInfo('Application will start but database-dependent features may not work');
+        return; // Don't exit, continue startup
       }
       
       logInfo('Database initialized successfully');
     } catch (error) {
-      logError('Database initialization failed', error);
-      process.exit(1);
+      logError('Database initialization failed - continuing without database connection', error);
+      logInfo('Application will start but database-dependent features may not work');
+      // Don't exit, continue startup to allow the app to handle requests
     }
   }
 

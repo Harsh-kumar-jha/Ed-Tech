@@ -36,6 +36,14 @@ export class AuthServiceImpl implements IAuthService {
     return this.authModel.updatePassword(userId, newPassword);
   }
 
+  async createSession(userId: string, token: string, expiresAt: Date, userAgent?: string, ipAddress?: string): Promise<ServiceResponse<boolean>> {
+    return this.authModel.createSession(userId, token, expiresAt, userAgent, ipAddress);
+  }
+
+  async invalidateAllUserSessions(userId: string): Promise<ServiceResponse<number>> {
+    return this.authModel.invalidateAllUserSessions(userId);
+  }
+
   async verifyEmail(userId: string): Promise<ServiceResponse<boolean>> {
     return this.authModel.verifyEmail(userId);
   }

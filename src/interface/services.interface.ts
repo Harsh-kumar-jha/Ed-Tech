@@ -25,6 +25,8 @@ export interface IAuthService extends IBaseService {
   updatePassword(userId: string, newPassword: string): Promise<ServiceResponse<boolean>>;
   verifyEmail(userId: string): Promise<ServiceResponse<boolean>>;
   deactivateUser(userId: string): Promise<ServiceResponse<boolean>>;
+  createSession(userId: string, token: string, expiresAt: Date, userAgent?: string, ipAddress?: string): Promise<ServiceResponse<boolean>>;
+  invalidateAllUserSessions(userId: string): Promise<ServiceResponse<number>>;
 }
 
 // Token service interface  

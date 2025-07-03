@@ -3,13 +3,14 @@ import bcrypt from 'bcryptjs';
 import { Request, Response, NextFunction } from 'express';
 import { logError } from '../../../utils/logger';
 import { logAuthOperation } from '../../../common';
+import { config } from '../../../config/environment';
 
-// Environment variables with defaults
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-key';
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '1h';
-const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'fallback-refresh-secret';
-const JWT_REFRESH_EXPIRES_IN = process.env.JWT_REFRESH_EXPIRES_IN || '30d';
-const BCRYPT_SALT_ROUNDS = parseInt(process.env.BCRYPT_SALT_ROUNDS || '12');
+// Use centralized configuration with proper fallbacks
+const JWT_SECRET = config.JWT_SECRET || 'fallback-secret-key';
+const JWT_EXPIRES_IN = config.JWT_EXPIRES_IN || '1h';
+const JWT_REFRESH_SECRET = config.JWT_REFRESH_SECRET || `${JWT_SECRET}_refresh`;
+const JWT_REFRESH_EXPIRES_IN = config.JWT_REFRESH_EXPIRES_IN || '1d';
+const BCRYPT_SALT_ROUNDS = config.BCRYPT_SALT_ROUNDS || 12;
 
 // Password utilities
 export const hashPassword = async (password: string): Promise<string> => {
@@ -112,6 +113,12 @@ export const authenticateToken = async (req: Request, res: Response, next: NextF
       throw new Error('No token provided');
     }
 
+    // Check if token is blacklisted
+    const isBlacklisted = await isTokenBlacklisted(token);
+    if (isBlacklisted) {
+      throw new Error('Token has been invalidated');
+    }
+
     const payload = verifyAccessToken(token);
 
     // Attach user to request
@@ -181,9 +188,24 @@ export const generateSecureToken = (): string => {
 };
 
 export const isTokenBlacklisted = async (token: string): Promise<boolean> => {
-  return false;
+  try {
+    const { AuthModel } = await import('../../../models/Auth.model');
+    const authModel = new AuthModel();
+    const result = await authModel.isTokenBlacklisted(token);
+    return result.success ? result.data : false;
+  } catch (error) {
+    logError('Failed to check token blacklist status', error, { token: token.substring(0, 20) + '...' });
+    return false; // Assume token is valid if check fails
+  }
 };
 
 export const blacklistToken = async (token: string): Promise<void> => {
-  // Placeholder
+  try {
+    const { AuthModel } = await import('../../../models/Auth.model');
+    const authModel = new AuthModel();
+    await authModel.invalidateSession(token);
+  } catch (error) {
+    logError('Failed to blacklist token', error, { token: token.substring(0, 20) + '...' });
+    throw new Error('Failed to blacklist token');
+  }
 };

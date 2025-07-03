@@ -6,7 +6,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { IAuthService, IOTPService } from '../../../interface/services.interface';
 import { ResponseService, ErrorService, logControllerAction, logAuthOperation } from '../../../common';
-import { logInfo } from '../../../utils/logger';
+import { logInfo, logError } from '../../../utils/logger';
 
 export class PasswordController {
   constructor(
@@ -161,30 +161,91 @@ export class PasswordController {
         }
 
         // OTP verified, now update password
-        // For now, we'll return success (in real implementation, update user password here)
-        logAuthOperation('Password reset completed via OTP', otpResult.data.user?.id, email, true, { 
-          identifier,
-          identifierType 
-        });
+        const user = otpResult.data.user;
+        
+        if (!user || !user.id) {
+          logAuthOperation('Password reset failed - user not found in OTP result', undefined, email, false, { 
+            identifier,
+            identifierType 
+          });
+          res.status(400).json(this.responseService.error(
+            'User not found for password reset',
+            'USER_NOT_FOUND'
+          ));
+          return;
+        }
+
+                  // Actually update the password in the database
+          try {
+            const updateResult = await this.authService.updatePassword(user.id, password);
+            
+            if (!updateResult.success) {
+              logAuthOperation('Password update failed', user.id, email, false, { 
+                identifier,
+                identifierType,
+                error: 'Failed to update password in database'
+              });
+              res.status(500).json(this.responseService.error(
+                'Failed to update password. Please try again.',
+                'PASSWORD_UPDATE_FAILED'
+              ));
+              return;
+            }
+
+                        // Enhanced security: Invalidate all existing sessions to force re-login with new password
+            try {
+              const sessionResult = await this.authService.invalidateAllUserSessions(user.id);
+              logInfo('User sessions invalidated after password reset', { 
+                userId: user.id, 
+                invalidatedSessions: sessionResult.data || 0 
+              });
+            } catch (sessionError) {
+              // Log but don't fail the password reset if session invalidation fails
+              logError('Failed to invalidate sessions during password reset', sessionError, { 
+                userId: user.id 
+              });
+            }
+
+            logAuthOperation('Password reset completed via OTP', user.id, email, true, { 
+              identifier,
+              identifierType 
+            });
 
         res.status(200).json(this.responseService.success({
           passwordReset: true,
-          method: 'otp'
+              method: 'otp',
+              userId: user.id,
+              message: 'Password has been reset successfully. Please log in with your new password.'
         }, 'Password reset successfully'));
         return;
+          
+        } catch (error: any) {
+          logAuthOperation('Password reset error during update', user.id, email, false, { 
+            identifier,
+            identifierType,
+            error: error.message 
+          });
+          res.status(500).json(this.responseService.error(
+            'Failed to update password. Please try again.',
+            'PASSWORD_UPDATE_ERROR'
+          ));
+          return;
+        }
       }
 
       // If using token-based reset (traditional email link method)
       if (token) {
-        // Token-based password reset logic would go here
-        logAuthOperation('Password reset completed via token', undefined, email, true, { 
-          email 
+        // TODO: Implement token-based password reset logic
+        // For now, return an error as this feature is not yet implemented
+        logAuthOperation('Token-based password reset attempted but not implemented', undefined, email, false, { 
+          email,
+          error: 'Token-based reset not implemented' 
         });
 
-        res.status(200).json(this.responseService.success({
-          passwordReset: true,
-          method: 'token'
-        }, 'Password reset successfully'));
+        res.status(501).json(this.responseService.error(
+          'Token-based password reset is not yet implemented. Please use OTP-based reset.',
+          'FEATURE_NOT_IMPLEMENTED'
+        ));
         return;
       }
 

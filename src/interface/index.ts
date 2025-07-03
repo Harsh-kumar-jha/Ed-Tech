@@ -36,5 +36,4 @@ export * from './services.interface';
 // JWT Payload interface (legacy export for backwards compatibility)
 export { JWTPayload } from './JWTPayload';
 
-// Re-export commonly used types from ../types for convenience
-export { UserRole, IELTSModule, TestStatus, DifficultyLevel, TransactionCallback } from '../types'; 
+ 

@@ -404,6 +404,58 @@ export class AuthModel {
     }
   }
 
+  // Check if token is blacklisted (session is inactive)
+  async isTokenBlacklisted(token: string): Promise<ServiceResponse<boolean>> {
+    try {
+      const session = await this.db.session.findFirst({
+        where: { token },
+        select: { isActive: true, expiresAt: true },
+      });
+
+      // Token is blacklisted if:
+      // 1. Session doesn't exist (never created or deleted)
+      // 2. Session is not active (isActive = false)
+      // 3. Session is expired
+      const isBlacklisted = !session || 
+                           !session.isActive || 
+                           session.expiresAt < new Date();
+
+      return {
+        success: true,
+        data: isBlacklisted,
+      };
+    } catch (error) {
+      logError('Failed to check token blacklist status', error, { token: token.substring(0, 20) + '...' });
+      throw new DatabaseError('Failed to check token status');
+    }
+  }
+
+  // Invalidate all sessions for a specific user (Security Enhancement)
+  async invalidateAllUserSessions(userId: string): Promise<ServiceResponse<number>> {
+    try {
+      const result = await this.db.session.updateMany({
+        where: { 
+          userId,
+          isActive: true 
+        },
+        data: { isActive: false },
+      });
+
+      logInfo('All user sessions invalidated', { 
+        userId, 
+        invalidatedCount: result.count 
+      });
+
+      return {
+        success: true,
+        data: result.count,
+      };
+    } catch (error) {
+      logError('Failed to invalidate all user sessions', error, { userId });
+      throw new DatabaseError('Failed to invalidate user sessions');
+    }
+  }
+
   // Generate OTP for phone/email verification
   async generateOTP(
     identifier: string, 
@@ -449,7 +501,8 @@ export class AuthModel {
             expiresAt,
             attempts: 0, // Reset attempts for new OTP
             isUsed: false, // Ensure it's marked as unused
-            // Keep the same userId, identifierType, purpose, maxAttempts
+            userId, // Update userId in case user information changed
+            // Keep the same identifierType, purpose, maxAttempts
             // Update createdAt is not needed - we track when OTP was refreshed via expiresAt
           },
         });
@@ -602,17 +655,32 @@ export class AuthModel {
         data: { isUsed: true },
       });
 
-      // Get user if exists
+      // Get user if exists (Strategy Pattern: Different retrieval strategies based on identifier type)
       let user: any = null;
       if (otpRecord.userId) {
+        // Direct user lookup by ID (most efficient)
         const userResult = await this.getUserById(otpRecord.userId);
         user = userResult.data;
-      } else if (identifierType === 'email') {
-        const userResult = await this.getUserByEmail(identifier);
-        user = userResult.data;
-      } else if (identifierType === 'phone') {
-        // TODO: Implement getUserByPhone
-        // For phone login, we might need to create user or find by phone
+      } else {
+        // Fallback: lookup by identifier type
+        if (identifierType === 'email') {
+          const userResult = await this.getUserByEmail(identifier);
+          user = userResult.data;
+        } else if (identifierType === 'phone') {
+          const userResult = await this.getUserByPhone(identifier);
+          user = userResult.data;
+          
+          if (!user && purpose === 'login') {
+            // For phone login, user must exist. Return specific error.
+            logInfo('Phone login attempted for non-existent user', { 
+              phone: identifier.substring(0, 5) + '***' 
+            });
+            return {
+              success: false,
+              error: 'Phone number not registered. Please register first or verify your phone number.',
+            };
+          }
+        }
       }
 
       logInfo('OTP verified successfully', { 

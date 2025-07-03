@@ -9,6 +9,8 @@ export interface EnvironmentConfig {
   DATABASE_URL: string;
   JWT_SECRET: string;
   JWT_EXPIRES_IN: string;
+  JWT_REFRESH_SECRET: string;
+  JWT_REFRESH_EXPIRES_IN: string;
   BCRYPT_SALT_ROUNDS: number;
   LOG_LEVEL: string;
   OLLAMA_BASE_URL: string;

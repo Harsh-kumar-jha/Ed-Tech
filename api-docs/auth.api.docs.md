@@ -508,17 +508,21 @@ Content-Type: application/json
 ```json
 {
   "success": true,
-  "message": "Password reset successful",
+  "message": "Password reset successfully",
   "data": {
     "passwordReset": true,
-    "user": {
-      "id": "550e8400-e29b-41d4-a716-446655440000",
-      "email": "john.doe@example.com",
-      "username": "johndoe"
-    }
+    "method": "otp",
+    "userId": "550e8400-e29b-41d4-a716-446655440000",
+    "message": "Password has been reset successfully. Please log in with your new password."
   }
 }
 ```
+
+### Security Features
+- **Session Invalidation**: All existing user sessions are automatically invalidated after password reset
+- **Enhanced Security**: Users must log in again with their new password
+- **Phone Support**: Password reset works with both email and phone number identifiers
+- **OTP Verification**: Secure 6-digit OTP with attempt limits and expiration
 
 ---
 
@@ -601,13 +605,46 @@ Content-Type: application/json
 ```json
 {
   "success": true,
-  "message": "Logout successful",
+  "message": "Logged out successfully",
   "data": {
-    "loggedOut": true,
-    "tokensInvalidated": true
+    "tokenInvalidated": true
   }
 }
 ```
+
+### Error Responses
+
+#### Already Logged Out (401 Unauthorized)
+```json
+{
+  "success": false,
+  "error": {
+    "message": "Token is already invalidated. You are already logged out.",
+    "code": "TOKEN_ALREADY_INVALIDATED",
+    "statusCode": 401,
+    "timestamp": "2024-01-15T10:30:00.000Z"
+  }
+}
+```
+
+#### Invalid Token (401 Unauthorized)
+```json
+{
+  "success": false,
+  "error": {
+    "message": "Invalid or expired token",
+    "code": "INVALID_TOKEN",
+    "statusCode": 401,
+    "timestamp": "2024-01-15T10:30:00.000Z"
+  }
+}
+```
+
+### Security Features
+- **Token Blacklisting**: Tokens are immediately invalidated in the database
+- **Prevents Reuse**: Invalidated tokens cannot be used for any API calls
+- **Multiple Logout Protection**: Subsequent logout attempts with the same token return appropriate errors
+- **Session Tracking**: All active sessions are properly managed and tracked
 
 ---
 
@@ -929,6 +966,132 @@ POST /api/v1/auth/refresh-token
 GET /api/v1/protected-route
 Authorization: Bearer <new_access_token>
 ```
+
+---
+
+## 14. Enhanced Security Features
+
+### 14.1 Session Management & Token Security
+
+#### Automatic Session Tracking
+- **Session Creation**: Every login automatically creates a session record in the database
+- **Token Storage**: Access tokens are stored with session metadata (IP, User-Agent, expiry)
+- **Blacklist Checking**: All protected endpoints verify token validity against the database
+
+#### Session Invalidation Strategies
+```typescript
+// Strategy Pattern Implementation
+interface SessionInvalidationStrategy {
+  invalidateSessions(userId: string): Promise<number>;
+}
+
+// Password Reset Strategy - Invalidates ALL user sessions
+class PasswordResetInvalidation implements SessionInvalidationStrategy {
+  async invalidateSessions(userId: string): Promise<number> {
+    // Implementation invalidates all sessions for enhanced security
+  }
+}
+
+// Logout Strategy - Invalidates single session
+class LogoutInvalidation implements SessionInvalidationStrategy {
+  async invalidateSessions(token: string): Promise<number> {
+    // Implementation invalidates specific session only
+  }
+}
+```
+
+### 14.2 Password Reset Security Enhancements
+
+#### Multi-Layer Security Approach
+1. **OTP Verification**: Secure 6-digit codes with attempt limits
+2. **Password Validation**: Strong password requirements enforced
+3. **Session Invalidation**: All existing sessions terminated
+4. **Phone Support**: Alternative identifier for password recovery
+5. **Audit Logging**: Complete trail of all password reset activities
+
+#### Security Flow Implementation
+```mermaid
+sequenceDiagram
+    participant User
+    participant API
+    participant Database
+    participant SMS/Email
+
+    User->>API: Request Password Reset
+    API->>Database: Generate OTP Record
+    API->>SMS/Email: Send OTP
+    User->>API: Submit OTP + New Password
+    API->>Database: Verify OTP
+    API->>Database: Update Password Hash
+    API->>Database: Invalidate All User Sessions
+    API->>User: Success Response
+```
+
+### 14.3 SOLID Principles Implementation
+
+#### Single Responsibility Principle (SRP)
+- **AuthModel**: Database operations only
+- **PasswordController**: Password-related logic only
+- **SessionService**: Session management only
+- **OTPService**: OTP generation and verification only
+
+#### Open/Closed Principle (OCP)
+- **Strategy Pattern**: Session invalidation strategies are extensible
+- **Factory Pattern**: Different OTP delivery methods (Email/SMS)
+- **Interface Segregation**: Specific interfaces for each service type
+
+#### Dependency Inversion Principle (DIP)
+- **Service Interfaces**: Controllers depend on abstractions, not implementations
+- **Repository Pattern**: Data access layer abstracted through models
+- **Configuration**: Environment-based configuration injection
+
+### 14.4 Phone Number Authentication
+
+#### Enhanced Phone Support
+```typescript
+// Complete getUserByPhone implementation
+async getUserByPhone(phone: string): Promise<ServiceResponse<UserWithoutPassword | null>> {
+  // Finds user through profile relationship
+  // Handles normalization and privacy concerns
+  // Returns consistent response structure
+}
+```
+
+#### Phone Login Requirements
+- **Email Verification**: Required before phone login activation
+- **Registration Check**: Phone must be associated with existing account
+- **Security Validation**: Additional checks for phone-based authentication
+
+### 14.5 Token Lifecycle Management
+
+#### Access Token Configuration
+```bash
+# Environment Variables
+JWT_EXPIRES_IN=1h          # Access token: 1 hour
+JWT_REFRESH_EXPIRES_IN=1d   # Refresh token: 1 day
+```
+
+#### Token Validation Pipeline
+1. **Existence Check**: Token present in request
+2. **Format Validation**: Proper JWT structure
+3. **Signature Verification**: Valid cryptographic signature
+4. **Expiry Check**: Token not expired
+5. **Blacklist Check**: Token not invalidated in database
+6. **User Validation**: Associated user still active
+
+### 14.6 Security Monitoring & Logging
+
+#### Comprehensive Audit Trail
+- **Authentication Events**: Login/logout with metadata
+- **Password Changes**: Complete reset flow tracking
+- **OTP Operations**: Generation, verification, and failures
+- **Session Activities**: Creation, usage, and invalidation
+
+#### Error Handling Strategy
+- **Security-First**: Fails closed on security checks
+- **Informative Errors**: Clear messages for legitimate users
+- **Attack Prevention**: Generic errors for security violations
+- **Logging**: Detailed server-side logs for investigations
 
 ---
 
