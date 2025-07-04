@@ -62,6 +62,7 @@ graph TD
 11. [Error Responses Reference](#11-error-responses-reference)
 12. [Authentication Headers](#12-authentication-headers)
 13. [Testing Guide](#13-testing-guide)
+14. [OAuth 2.0 Authentication (Google & Microsoft)](#14-oauth-20-authentication-google-microsoft)
 
 ---
 
@@ -969,129 +970,57 @@ Authorization: Bearer <new_access_token>
 
 ---
 
-## 14. Enhanced Security Features
+## 14. OAuth 2.0 Authentication (Google & Microsoft)
 
-### 14.1 Session Management & Token Security
+### Overview
+This API supports OAuth 2.0 login with Google and Microsoft accounts. On successful authentication, users receive JWT access and refresh tokens.
 
-#### Automatic Session Tracking
-- **Session Creation**: Every login automatically creates a session record in the database
-- **Token Storage**: Access tokens are stored with session metadata (IP, User-Agent, expiry)
-- **Blacklist Checking**: All protected endpoints verify token validity against the database
-
-#### Session Invalidation Strategies
-```typescript
-// Strategy Pattern Implementation
-interface SessionInvalidationStrategy {
-  invalidateSessions(userId: string): Promise<number>;
-}
-
-// Password Reset Strategy - Invalidates ALL user sessions
-class PasswordResetInvalidation implements SessionInvalidationStrategy {
-  async invalidateSessions(userId: string): Promise<number> {
-    // Implementation invalidates all sessions for enhanced security
-  }
-}
-
-// Logout Strategy - Invalidates single session
-class LogoutInvalidation implements SessionInvalidationStrategy {
-  async invalidateSessions(token: string): Promise<number> {
-    // Implementation invalidates specific session only
-  }
-}
-```
-
-### 14.2 Password Reset Security Enhancements
-
-#### Multi-Layer Security Approach
-1. **OTP Verification**: Secure 6-digit codes with attempt limits
-2. **Password Validation**: Strong password requirements enforced
-3. **Session Invalidation**: All existing sessions terminated
-4. **Phone Support**: Alternative identifier for password recovery
-5. **Audit Logging**: Complete trail of all password reset activities
-
-#### Security Flow Implementation
+### OAuth Flow Diagram
 ```mermaid
-sequenceDiagram
-    participant User
-    participant API
-    participant Database
-    participant SMS/Email
-
-    User->>API: Request Password Reset
-    API->>Database: Generate OTP Record
-    API->>SMS/Email: Send OTP
-    User->>API: Submit OTP + New Password
-    API->>Database: Verify OTP
-    API->>Database: Update Password Hash
-    API->>Database: Invalidate All User Sessions
-    API->>User: Success Response
+graph TD
+    A[User clicks Login with Google/Microsoft] --> B[Redirect to Provider]
+    B --> C[User Authenticates]
+    C --> D[Provider redirects to /callback]
+    D --> E[API verifies user, issues JWT tokens]
+    E --> F[Frontend receives tokens]
 ```
 
-### 14.3 SOLID Principles Implementation
+### Endpoints
 
-#### Single Responsibility Principle (SRP)
-- **AuthModel**: Database operations only
-- **PasswordController**: Password-related logic only
-- **SessionService**: Session management only
-- **OTPService**: OTP generation and verification only
+#### 14.1 Google OAuth
+- **GET** `/api/v1/auth/google`
+  - Redirects to Google login page.
+- **GET** `/api/v1/auth/google/callback`
+  - Handles Google OAuth callback. Returns JWT tokens on success.
 
-#### Open/Closed Principle (OCP)
-- **Strategy Pattern**: Session invalidation strategies are extensible
-- **Factory Pattern**: Different OTP delivery methods (Email/SMS)
-- **Interface Segregation**: Specific interfaces for each service type
-
-#### Dependency Inversion Principle (DIP)
-- **Service Interfaces**: Controllers depend on abstractions, not implementations
-- **Repository Pattern**: Data access layer abstracted through models
-- **Configuration**: Environment-based configuration injection
-
-### 14.4 Phone Number Authentication
-
-#### Enhanced Phone Support
-```typescript
-// Complete getUserByPhone implementation
-async getUserByPhone(phone: string): Promise<ServiceResponse<UserWithoutPassword | null>> {
-  // Finds user through profile relationship
-  // Handles normalization and privacy concerns
-  // Returns consistent response structure
+##### Success Response
+```json
+{
+  "accessToken": "...",
+  "refreshToken": "...",
+  "expiresIn": 3600
 }
 ```
 
-#### Phone Login Requirements
-- **Email Verification**: Required before phone login activation
-- **Registration Check**: Phone must be associated with existing account
-- **Security Validation**: Additional checks for phone-based authentication
+#### 14.2 Microsoft OAuth
+- **GET** `/api/v1/auth/microsoft`
+  - Redirects to Microsoft login page.
+- **POST** `/api/v1/auth/microsoft/callback`
+  - Handles Microsoft OAuth callback. Returns JWT tokens on success.
 
-### 14.5 Token Lifecycle Management
-
-#### Access Token Configuration
-```bash
-# Environment Variables
-JWT_EXPIRES_IN=1h          # Access token: 1 hour
-JWT_REFRESH_EXPIRES_IN=1d   # Refresh token: 1 day
+##### Success Response
+```json
+{
+  "accessToken": "...",
+  "refreshToken": "...",
+  "expiresIn": 3600
+}
 ```
 
-#### Token Validation Pipeline
-1. **Existence Check**: Token present in request
-2. **Format Validation**: Proper JWT structure
-3. **Signature Verification**: Valid cryptographic signature
-4. **Expiry Check**: Token not expired
-5. **Blacklist Check**: Token not invalidated in database
-6. **User Validation**: Associated user still active
-
-### 14.6 Security Monitoring & Logging
-
-#### Comprehensive Audit Trail
-- **Authentication Events**: Login/logout with metadata
-- **Password Changes**: Complete reset flow tracking
-- **OTP Operations**: Generation, verification, and failures
-- **Session Activities**: Creation, usage, and invalidation
-
-#### Error Handling Strategy
-- **Security-First**: Fails closed on security checks
-- **Informative Errors**: Clear messages for legitimate users
-- **Attack Prevention**: Generic errors for security violations
-- **Logging**: Detailed server-side logs for investigations
+### Notes
+- If the user does not exist, a new account is created and linked to the provider.
+- No password is required for OAuth-only users.
+- All sensitive credentials are managed via environment variables.
 
 ---
 

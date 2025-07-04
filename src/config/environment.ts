@@ -1,8 +1,7 @@
-import dotenv from 'dotenv';
 import { EnvironmentConfig } from '@/interface';
 
-// Load environment variables
-dotenv.config();
+// Load environment variables is now handled in the main index.ts
+// dotenv.config();
 
 // Validate required environment variables
 const requiredEnvVars = [
@@ -59,6 +58,14 @@ export const config: EnvironmentConfig = {
   TWOFACTOR_API_KEY: process.env.TWOFACTOR_API_KEY!,
   TWOFACTOR_SMS_SENDER: process.env.TWOFACTOR_SMS_SENDER || 'EDTECH',
   TWOFACTOR_BASE_URL: process.env.TWOFACTOR_BASE_URL || 'https://2factor.in/API/V1',
+
+  // OAuth Providers
+  GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || '',
+  GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET || '',
+  GOOGLE_CALLBACK_URL: process.env.GOOGLE_CALLBACK_URL || '',
+  MICROSOFT_CLIENT_ID: process.env.MICROSOFT_CLIENT_ID || '',
+  MICROSOFT_CLIENT_SECRET: process.env.MICROSOFT_CLIENT_SECRET || '',
+  MICROSOFT_CALLBACK_URL: process.env.MICROSOFT_CALLBACK_URL || '',
 };
 
 // Derived configuration

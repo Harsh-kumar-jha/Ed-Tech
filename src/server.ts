@@ -6,6 +6,8 @@ import compression from 'compression';
 import rateLimit from 'express-rate-limit';
 import { createServer } from 'http';
 import { Server as SocketIOServer } from 'socket.io';
+import session from 'express-session';
+import passport from './config/passport';
 
 import { config, corsConfig, rateLimitConfig, socketConfig } from './config';
 import { 
@@ -173,6 +175,17 @@ export class Server {
         },
       });
     });
+
+    // Session middleware (required for Passport OAuth)
+    this.app.use(session({
+      secret: config.JWT_SECRET,
+      resave: false,
+      saveUninitialized: false,
+      cookie: { secure: config.NODE_ENV === 'production' },
+    }));
+    // Passport initialization
+    this.app.use(passport.initialize());
+    this.app.use(passport.session());
   }
 
   private initializeRoutes(): void {
