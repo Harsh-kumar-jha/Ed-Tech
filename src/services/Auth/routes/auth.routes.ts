@@ -54,12 +54,12 @@ router.post('/send-email-verification', validateSendEmailVerification, authContr
 router.post('/verify-email', validateVerifyEmail, authController.verifyEmail.bind(authController));
 
 // Google OAuth
-router.get('/auth/google', oauthController.googleAuth);
-router.get('/auth/google/callback', oauthController.googleCallback);
+router.get('/google', oauthController.googleAuth);
+router.get('/google/callback', oauthController.googleCallback);
 
 // Microsoft OAuth
-router.get('/auth/microsoft', oauthController.microsoftAuth);
-router.post('/auth/microsoft/callback', oauthController.microsoftCallback);
+router.get('/microsoft', oauthController.microsoftAuth);
+router.post('/microsoft/callback', oauthController.microsoftCallback);
 
 // Development only endpoints
 if (process.env.NODE_ENV === 'development') {
