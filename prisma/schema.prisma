@@ -314,14 +314,17 @@ model User {
   provider        String?
 
   // Relations
-  profile      UserProfile?
-  testAttempts TestAttempt[]
-  testResults  TestResult[]
-  leaderboard  LeaderboardEntry[]
-  sessions     Session[]
-  auditLogs    AuditLog[]
-  createdTests IELTSTest[]  @relation("TestCreator")
-  otpRecords   OTPVerification[]
+  profile          UserProfile?
+  testAttempts     TestAttempt[]
+  testResults      TestResult[]
+  leaderboard      LeaderboardEntry[]
+  sessions         Session[]
+  auditLogs        AuditLog[]
+  createdTests     IELTSTest[]      @relation("TestCreator")
+  otpRecords       OTPVerification[]
+  writingTests     WritingTest[]
+  writingProgress  WritingProgress?
+  task1Templates   WritingTask1Template[] @relation("Task1TemplateCreator")
 
   @@map("users")
 }
@@ -368,5 +371,77 @@ model OTPVerification {
   @@index([identifier, purpose, isUsed])
   @@index([expiresAt])
   @@map("otp_verifications")
+}
+
+// ===========================
+// Writing Test Models
+// ===========================
+
+model WritingTest {
+  id              String   @id @default(uuid())
+  userId          String
+  testSessionId   String   @unique
+  testType        String   // "academic" or "general_training"
+  task1Prompt     String?  @db.Text  // Will be deleted after 24 hours
+  task2Prompt     String?  @db.Text  // Will be deleted after 24 hours
+  task1Response   String?  @db.Text  // Will be deleted after 24 hours
+  task2Response   String?  @db.Text  // Will be deleted after 24 hours
+  task1Band       Float?
+  task2Band       Float?
+  combinedBand    Float?
+  task1Feedback   Json?    // Permanent storage
+  task2Feedback   Json?    // Permanent storage
+  overallFeedback Json?    // Permanent storage
+  startedAt       DateTime @default(now())
+  task1CompletedAt DateTime?
+  task2CompletedAt DateTime?
+  evaluatedAt     DateTime?
+  deleteQuestionsAt DateTime? // For scheduling deletion of prompts and responses
+  status          String   @default("pending") // pending, task1_completed, task2_completed, evaluated
+  
+  // Relations
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([testSessionId])
+  @@index([deleteQuestionsAt]) // For efficient cleanup
+  @@map("writing_tests")
+}
+
+model WritingProgress {
+  id              String   @id @default(uuid())
+  userId          String   @unique
+  testCount       Int      @default(0)
+  averageBand     Float?
+  bestBand        Float?
+  progressAnalysis Json?
+  lastUpdated     DateTime @updatedAt
+  
+  // Relations
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("writing_progress")
+}
+
+// ===========================
+// Writing Task Templates
+// ===========================
+
+model WritingTask1Template {
+  id          String   @id @default(uuid())
+  type        String   // e.g., "Bar chart", "Line graph", "Pie chart", "Map", "Process", etc.
+  prompt      String   @db.Text
+  imageUrl    String   @map("image_url")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdBy   String   // Admin user ID who created this template
+  isActive    Boolean  @default(true)
+
+  // Relations
+  user User @relation("Task1TemplateCreator", fields: [createdBy], references: [id])
+
+  @@map("writing_task1_templates")
+  @@index([type])
+  @@index([createdBy])
 }
 

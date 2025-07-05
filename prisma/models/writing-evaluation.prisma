@@ -1,0 +1,47 @@
+// Writing Test Models
+
+model WritingTest {
+  id              String   @id @default(uuid())
+  userId          String
+  testSessionId   String   @unique
+  testType        String   // "academic" or "general_training"
+  task1Prompt     String?  @db.Text  // Will be deleted after 24 hours
+  task2Prompt     String?  @db.Text  // Will be deleted after 24 hours
+  task1Response   String?  @db.Text  // Will be deleted after 24 hours
+  task2Response   String?  @db.Text  // Will be deleted after 24 hours
+  task1Band       Float?
+  task2Band       Float?
+  combinedBand    Float?
+  task1Feedback   Json?    // Permanent storage
+  task2Feedback   Json?    // Permanent storage
+  overallFeedback Json?    // Permanent storage
+  startedAt       DateTime @default(now())
+  task1CompletedAt DateTime?
+  task2CompletedAt DateTime?
+  evaluatedAt     DateTime?
+  deleteQuestionsAt DateTime? // For scheduling deletion of prompts and responses
+  status          String   @default("pending") // pending, task1_completed, task2_completed, evaluated
+  
+  // Relations
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([testSessionId])
+  @@index([deleteQuestionsAt]) // For efficient cleanup
+  @@map("writing_tests")
+}
+
+model WritingProgress {
+  id              String   @id @default(uuid())
+  userId          String   @unique
+  testCount       Int      @default(0)
+  averageBand     Float?
+  bestBand        Float?
+  progressAnalysis Json?
+  lastUpdated     DateTime @updatedAt
+  
+  // Relations
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("writing_progress")
+} 

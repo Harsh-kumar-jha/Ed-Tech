@@ -19,7 +19,7 @@ import {
 import { accessLogger, logInfo, logError } from './utils/logger';
 import { initializePrisma, checkDatabaseHealth } from './utils/database';
 import { requestLogger } from './common';
-import { cleanupJobs } from './utils/cleanup-jobs';
+import { cleanupJobs, writingCleanupJob } from './utils/cleanup-jobs';
 
 // Import routes
 import { 
@@ -33,6 +33,9 @@ import {
 // Handle uncaught exceptions and unhandled rejections
 handleUncaughtException();
 handleUnhandledRejection();
+
+// Start cleanup jobs
+writingCleanupJob.start();
 
 export class Server {
   private app: express.Application;
@@ -181,8 +184,18 @@ export class Server {
       secret: config.JWT_SECRET,
       resave: false,
       saveUninitialized: false,
-      cookie: { secure: config.NODE_ENV === 'production' },
+      cookie: { 
+        secure: config.NODE_ENV === 'production',  // Only use secure cookies in production
+        sameSite: config.NODE_ENV === 'production' ? 'none' : 'lax'  // Adjust sameSite based on environment
+      },
+      proxy: config.NODE_ENV === 'production'  // Only trust proxy in production
     }));
+
+    // Trust proxy - required for secure cookies behind a proxy
+    if (config.NODE_ENV === 'production') {
+      this.app.set('trust proxy', 1);
+    }
+
     // Passport initialization
     this.app.use(passport.initialize());
     this.app.use(passport.session());
@@ -303,7 +316,7 @@ export class Server {
 
         // Initialize periodic cleanup jobs
         logInfo('🧹 Initializing periodic cleanup jobs');
-        cleanupJobs.startPeriodicCleanup(24); // Run every 24 hours
+        cleanupJobs.startPeriodicCleanup('0 0 * * *'); // Run at midnight every day
         logInfo('✅ Cleanup jobs scheduled successfully');
       });
 
