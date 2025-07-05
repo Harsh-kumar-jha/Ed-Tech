@@ -6,9 +6,12 @@
 import { AuthModel } from '../models/Auth.model';
 import { logInfo, logError } from './logger';
 import { checkDatabaseHealth } from './database';
+import { CronJob } from 'cron';
+import { WritingCleanupService } from '../services/AI/services/writing-cleanup.service';
 
 class CleanupJobs {
   private authModel: AuthModel | null = null;
+  private otpCleanupJob: CronJob | null = null;
 
   /**
    * Initialize AuthModel only when needed (lazy initialization)
@@ -86,35 +89,66 @@ class CleanupJobs {
   }
 
   /**
-   * Schedule periodic cleanup (example using setTimeout - in production use cron)
-   * @param intervalHours How often to run cleanup (in hours)
+   * Schedule periodic cleanup using cron
+   * @param cronPattern Cron pattern for scheduling (defaults to every 24 hours at midnight)
    */
-  startPeriodicCleanup(intervalHours: number = 24): void {
-    const intervalMs = intervalHours * 60 * 60 * 1000; // Convert hours to milliseconds
-    
+  startPeriodicCleanup(cronPattern: string = '0 0 * * *'): void {
+    // Stop existing job if any
+    if (this.otpCleanupJob) {
+      this.otpCleanupJob.stop();
+    }
+
     logInfo('Starting periodic cleanup scheduler', {
-      intervalHours,
-      nextRunAt: new Date(Date.now() + intervalMs).toISOString()
+      cronPattern,
+      nextRunAt: new CronJob(
+        cronPattern,
+        () => {},
+        null,
+        false,
+        'UTC'
+      ).nextDate().toString()
     });
 
-    // Don't run cleanup immediately - wait for server to be fully initialized
-    // Schedule cleanup to start after a brief delay
+    // Create new cron job
+    this.otpCleanupJob = new CronJob(
+      cronPattern,
+      () => {
+        this.runAllCleanupJobs().catch((error) => {
+          logError('Error in periodic cleanup job execution', error);
+        });
+      },
+      null, // onComplete
+      true, // start
+      'UTC' // timeZone
+    );
+
+    // Run initial cleanup after 30 seconds
     setTimeout(() => {
       this.runAllCleanupJobs().catch((error) => {
         logError('Error in initial cleanup job execution', error);
       });
-    }, 30000); // Wait 30 seconds for server to fully start and database to be ready
-
-    // Schedule recurring cleanup with error handling
-    setInterval(() => {
-      this.runAllCleanupJobs().catch((error) => {
-        logError('Error in periodic cleanup job execution', error);
-      });
-    }, intervalMs);
+    }, 30000);
   }
 }
 
 export const cleanupJobs = new CleanupJobs();
+
+// Run writing cleanup job every hour
+export const writingCleanupJob = new CronJob(
+  '0 * * * *',
+  async () => {
+    const cleanupService = new WritingCleanupService();
+    try {
+      await cleanupService.runCleanup();
+      logInfo('Writing test cleanup completed successfully');
+    } catch (error) {
+      logError('Writing test cleanup failed:', error);
+    }
+  },
+  null, // onComplete
+  true, // start
+  'UTC' // timeZone
+);
 
 // Example usage:
 // import { cleanupJobs } from './utils/cleanup-jobs';

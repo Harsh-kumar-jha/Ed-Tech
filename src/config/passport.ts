@@ -2,7 +2,7 @@ import passport from 'passport';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 import { OIDCStrategy as MicrosoftStrategy } from 'passport-azure-ad';
 
-import { config } from '@/config';
+import { config, isDevelopment } from './environment';
 import prisma from '@/db';
 
 /**
@@ -95,15 +95,17 @@ if (allSet({
   passport.use(
     new MicrosoftStrategy(
       {
-        identityMetadata: `https://login.microsoftonline.com/common/v2.0/.well-known/openid-configuration`,
+        identityMetadata: `https://login.microsoftonline.com/${config.MICROSOFT_TENANT_ID}/v2.0/.well-known/openid-configuration`,
         clientID: config.MICROSOFT_CLIENT_ID,
         clientSecret: config.MICROSOFT_CLIENT_SECRET,
         responseType: 'code',
         responseMode: 'form_post',
         redirectUrl: config.MICROSOFT_CALLBACK_URL,
-        scope: ['profile', 'email'],
-        allowHttpForRedirectUrl: true, // For development
+        scope: ['profile', 'email', 'openid'],
+        allowHttpForRedirectUrl: isDevelopment,  // Allow HTTP in development
         passReqToCallback: false,
+        loggingLevel: isDevelopment ? 'info' : 'error',  // More verbose logging in development
+        loggingNoPII: true,  // Don't log personally identifiable information
       },
       async (iss, sub, profile, accessToken, refreshToken, done) => {
         try {

@@ -18,14 +18,17 @@ model User {
   provider        String?
 
   // Relations
-  profile      UserProfile?
-  testAttempts TestAttempt[]
-  testResults  TestResult[]
-  leaderboard  LeaderboardEntry[]
-  sessions     Session[]
-  auditLogs    AuditLog[]
-  createdTests IELTSTest[]  @relation("TestCreator")
-  otpRecords   OTPVerification[]
+  profile          UserProfile?
+  testAttempts     TestAttempt[]
+  testResults      TestResult[]
+  leaderboard      LeaderboardEntry[]
+  sessions         Session[]
+  auditLogs        AuditLog[]
+  createdTests     IELTSTest[]      @relation("TestCreator")
+  otpRecords       OTPVerification[]
+  writingTests     WritingTest[]
+  writingProgress  WritingProgress?
+  task1Templates   WritingTask1Template[] @relation("Task1TemplateCreator")
 
   @@map("users")
 }
