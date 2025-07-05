@@ -19,7 +19,7 @@ model WritingTest {
   task1CompletedAt DateTime?
   task2CompletedAt DateTime?
   evaluatedAt     DateTime?
-  deleteQuestionsAt DateTime? // For scheduling deletion of prompts and responses
+  deleteQuestionsAt DateTime? @db.Timestamp(3)  // For scheduling deletion of prompts and responses
   status          String   @default("pending") // pending, task1_completed, task2_completed, evaluated
   
   // Relations

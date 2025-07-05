@@ -361,3 +361,9 @@ ALTER TABLE "user_profiles" ADD CONSTRAINT "user_profiles_userId_fkey" FOREIGN K
 
 -- AddForeignKey
 ALTER TABLE "otp_verifications" ADD CONSTRAINT "otp_verifications_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AlterTable
+ALTER TABLE "writing_tests" ADD COLUMN "deleteQuestionsAt" TIMESTAMP(3);
+
+-- CreateIndex
+CREATE INDEX "writing_tests_deleteQuestionsAt_idx" ON "writing_tests"("deleteQuestionsAt");
