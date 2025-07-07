@@ -16,6 +16,9 @@ CREATE TYPE "TestStatus" AS ENUM ('NOT_STARTED', 'IN_PROGRESS', 'COMPLETED', 'SU
 -- CreateEnum
 CREATE TYPE "LeaderboardType" AS ENUM ('DAILY', 'WEEKLY', 'MONTHLY', 'GLOBAL');
 
+-- CreateEnum
+CREATE TYPE "SubscriptionTier" AS ENUM ('FREE', 'PREMIUM', 'ENTERPRISE');
+
 -- CreateTable
 CREATE TABLE "audit_logs" (
     "id" TEXT NOT NULL,
@@ -30,6 +33,23 @@ CREATE TABLE "audit_logs" (
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "audit_logs_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "otp_verifications" (
+    "id" TEXT NOT NULL,
+    "identifier" TEXT NOT NULL,
+    "identifierType" TEXT NOT NULL,
+    "otp" TEXT NOT NULL,
+    "purpose" TEXT NOT NULL,
+    "userId" TEXT,
+    "expiresAt" TIMESTAMP(3) NOT NULL,
+    "attempts" INTEGER NOT NULL DEFAULT 0,
+    "maxAttempts" INTEGER NOT NULL DEFAULT 3,
+    "isUsed" BOOLEAN NOT NULL DEFAULT false,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "otp_verifications_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -184,20 +204,30 @@ CREATE TABLE "test_results" (
 CREATE TABLE "users" (
     "id" TEXT NOT NULL,
     "email" TEXT NOT NULL,
-    "username" TEXT NOT NULL,
-    "firstName" TEXT NOT NULL,
-    "lastName" TEXT NOT NULL,
+    "username" TEXT,
+    "firstName" TEXT,
+    "lastName" TEXT,
     "password" TEXT NOT NULL,
     "role" "UserRole" NOT NULL DEFAULT 'STUDENT',
     "isActive" BOOLEAN NOT NULL DEFAULT true,
     "isEmailVerified" BOOLEAN NOT NULL DEFAULT false,
     "emailVerifiedAt" TIMESTAMP(3),
-    "lastLoginAt" TIMESTAMP(3),
+    "phoneNumber" TEXT,
+    "countryCode" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
+    "lastLoginAt" TIMESTAMP(3),
+    "provider" TEXT NOT NULL DEFAULT 'local',
+    "subscriptionTier" "SubscriptionTier" NOT NULL DEFAULT 'FREE',
+    "subscriptionStatus" TEXT NOT NULL DEFAULT 'active',
+    "subscriptionEndDate" TIMESTAMP(3),
+    "subscriptionFeatures" TEXT[],
+    "testCount" INTEGER NOT NULL DEFAULT 0,
+    "premiumTestCount" INTEGER NOT NULL DEFAULT 0,
     "googleId" TEXT,
+    "facebookId" TEXT,
+    "appleId" TEXT,
     "microsoftId" TEXT,
-    "provider" TEXT,
 
     CONSTRAINT "users_pkey" PRIMARY KEY ("id")
 );
@@ -216,6 +246,8 @@ CREATE TABLE "user_profiles" (
     "targetScore" DOUBLE PRECISION,
     "currentLevel" "DifficultyLevel" NOT NULL DEFAULT 'BEGINNER',
     "studyGoals" TEXT[],
+    "webhookUrl" TEXT,
+    "webhookSecret" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -223,20 +255,84 @@ CREATE TABLE "user_profiles" (
 );
 
 -- CreateTable
-CREATE TABLE "otp_verifications" (
+CREATE TABLE "webhook_logs" (
     "id" TEXT NOT NULL,
-    "identifier" TEXT NOT NULL,
-    "identifierType" TEXT NOT NULL,
-    "otp" TEXT NOT NULL,
-    "purpose" TEXT NOT NULL,
-    "userId" TEXT,
-    "expiresAt" TIMESTAMP(3) NOT NULL,
-    "attempts" INTEGER NOT NULL DEFAULT 0,
-    "maxAttempts" INTEGER NOT NULL DEFAULT 3,
-    "isUsed" BOOLEAN NOT NULL DEFAULT false,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "userId" TEXT NOT NULL,
+    "event" TEXT NOT NULL,
+    "success" BOOLEAN NOT NULL,
+    "timestamp" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "error" TEXT,
 
-    CONSTRAINT "otp_verifications_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "webhook_logs_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "writing_tests" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "testSessionId" TEXT NOT NULL,
+    "testType" TEXT NOT NULL,
+    "status" TEXT NOT NULL DEFAULT 'pending',
+    "task1Prompt" TEXT,
+    "task2Prompt" TEXT,
+    "task1Response" TEXT,
+    "task2Response" TEXT,
+    "task1Band" DOUBLE PRECISION,
+    "task2Band" DOUBLE PRECISION,
+    "combinedBand" DOUBLE PRECISION,
+    "task1Feedback" JSONB,
+    "task2Feedback" JSONB,
+    "overallFeedback" JSONB,
+    "task1CompletedAt" TIMESTAMP(3),
+    "task2CompletedAt" TIMESTAMP(3),
+    "evaluatedAt" TIMESTAMP(3),
+    "deleteQuestionsAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "writing_tests_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "task_evaluations" (
+    "id" TEXT NOT NULL,
+    "writingTestId" TEXT NOT NULL,
+    "taskType" TEXT NOT NULL,
+    "band" DOUBLE PRECISION NOT NULL,
+    "feedback" TEXT NOT NULL,
+    "strengths" TEXT[],
+    "improvements" TEXT[],
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "task_evaluations_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "writing_progress" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "testCount" INTEGER NOT NULL DEFAULT 0,
+    "averageBand" DOUBLE PRECISION,
+    "bestBand" DOUBLE PRECISION,
+    "progressAnalysis" JSONB,
+    "lastUpdated" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "writing_progress_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "writing_task1_templates" (
+    "id" TEXT NOT NULL,
+    "type" TEXT NOT NULL,
+    "prompt" TEXT NOT NULL,
+    "image_url" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "createdBy" TEXT NOT NULL,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+
+    CONSTRAINT "writing_task1_templates_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateIndex
@@ -244,6 +340,12 @@ CREATE INDEX "audit_logs_userId_createdAt_idx" ON "audit_logs"("userId", "create
 
 -- CreateIndex
 CREATE INDEX "audit_logs_resource_createdAt_idx" ON "audit_logs"("resource", "createdAt");
+
+-- CreateIndex
+CREATE INDEX "otp_verifications_identifier_purpose_isUsed_idx" ON "otp_verifications"("identifier", "purpose", "isUsed");
+
+-- CreateIndex
+CREATE INDEX "otp_verifications_expiresAt_idx" ON "otp_verifications"("expiresAt");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "file_uploads_filename_key" ON "file_uploads"("filename");
@@ -309,19 +411,58 @@ CREATE UNIQUE INDEX "users_username_key" ON "users"("username");
 CREATE UNIQUE INDEX "users_googleId_key" ON "users"("googleId");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "users_facebookId_key" ON "users"("facebookId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "users_appleId_key" ON "users"("appleId");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "users_microsoftId_key" ON "users"("microsoftId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "user_profiles_userId_key" ON "user_profiles"("userId");
 
 -- CreateIndex
-CREATE INDEX "otp_verifications_identifier_purpose_isUsed_idx" ON "otp_verifications"("identifier", "purpose", "isUsed");
+CREATE INDEX "webhook_logs_userId_event_idx" ON "webhook_logs"("userId", "event");
 
 -- CreateIndex
-CREATE INDEX "otp_verifications_expiresAt_idx" ON "otp_verifications"("expiresAt");
+CREATE INDEX "webhook_logs_timestamp_idx" ON "webhook_logs"("timestamp");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "writing_tests_testSessionId_key" ON "writing_tests"("testSessionId");
+
+-- CreateIndex
+CREATE INDEX "writing_tests_userId_idx" ON "writing_tests"("userId");
+
+-- CreateIndex
+CREATE INDEX "writing_tests_testType_idx" ON "writing_tests"("testType");
+
+-- CreateIndex
+CREATE INDEX "writing_tests_status_idx" ON "writing_tests"("status");
+
+-- CreateIndex
+CREATE INDEX "writing_tests_deleteQuestionsAt_idx" ON "writing_tests"("deleteQuestionsAt");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "task_evaluations_writingTestId_key" ON "task_evaluations"("writingTestId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "writing_progress_userId_key" ON "writing_progress"("userId");
+
+-- CreateIndex
+CREATE INDEX "writing_task1_templates_type_idx" ON "writing_task1_templates"("type");
+
+-- CreateIndex
+CREATE INDEX "writing_task1_templates_createdBy_idx" ON "writing_task1_templates"("createdBy");
 
 -- AddForeignKey
 ALTER TABLE "audit_logs" ADD CONSTRAINT "audit_logs_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "otp_verifications" ADD CONSTRAINT "otp_verifications_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "file_uploads" ADD CONSTRAINT "file_uploads_uploadedBy_fkey" FOREIGN KEY ("uploadedBy") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "ielts_tests" ADD CONSTRAINT "ielts_tests_createdBy_fkey" FOREIGN KEY ("createdBy") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -360,10 +501,19 @@ ALTER TABLE "test_results" ADD CONSTRAINT "test_results_attemptId_fkey" FOREIGN 
 ALTER TABLE "user_profiles" ADD CONSTRAINT "user_profiles_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "otp_verifications" ADD CONSTRAINT "otp_verifications_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "webhook_logs" ADD CONSTRAINT "webhook_logs_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
--- AlterTable
-ALTER TABLE "writing_tests" ADD COLUMN "deleteQuestionsAt" TIMESTAMP(3);
+-- AddForeignKey
+ALTER TABLE "writing_tests" ADD CONSTRAINT "writing_tests_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
--- CreateIndex
-CREATE INDEX "writing_tests_deleteQuestionsAt_idx" ON "writing_tests"("deleteQuestionsAt");
+-- AddForeignKey
+ALTER TABLE "task_evaluations" ADD CONSTRAINT "task1_evaluation_writing_test_fk" FOREIGN KEY ("writingTestId") REFERENCES "writing_tests"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "task_evaluations" ADD CONSTRAINT "task2_evaluation_writing_test_fk" FOREIGN KEY ("writingTestId") REFERENCES "writing_tests"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "writing_progress" ADD CONSTRAINT "writing_progress_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "writing_task1_templates" ADD CONSTRAINT "writing_task1_templates_createdBy_fkey" FOREIGN KEY ("createdBy") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

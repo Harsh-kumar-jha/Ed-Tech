@@ -10,7 +10,7 @@ import {
   CreateUserRequest, 
   LoginRequest, 
   ServiceResponse, 
-  User,
+  IUser as User,
   UserWithoutPassword
 } from '../interface';
 import { UserRole } from '../types';

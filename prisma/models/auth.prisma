@@ -1,0 +1,20 @@
+model OTPVerification {
+  id             String   @id @default(uuid())
+  identifier     String   // email or phone
+  identifierType String   // 'email' or 'phone'
+  otp            String
+  purpose        String   // 'login', 'password_reset', 'email_verification'
+  userId         String?
+  expiresAt      DateTime
+  attempts       Int      @default(0)
+  maxAttempts    Int      @default(3)
+  isUsed         Boolean  @default(false)
+  createdAt      DateTime @default(now())
+
+  // Relations
+  user User? @relation("UserOTPVerifications", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([identifier, purpose, isUsed])
+  @@index([expiresAt])
+  @@map("otp_verifications")
+} 

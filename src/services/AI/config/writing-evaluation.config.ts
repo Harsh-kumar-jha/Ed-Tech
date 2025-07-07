@@ -1,9 +1,9 @@
-import { openRouterConfig } from '../../../config/ai';
+import { groqConfig } from '../../../config/ai';
 
 export const writingEvaluationConfig = {
-  model: openRouterConfig.model,
-  headers: openRouterConfig.headers,
-  ...openRouterConfig.defaultParams,
+  model: groqConfig.model,
+  headers: groqConfig.headers,
+  ...groqConfig.defaultParams,
   system_prompt: `You are an expert IELTS examiner with years of experience in evaluating writing tasks. 
   Evaluate the writing based on the official IELTS criteria:
   1. Task Achievement/Response
@@ -93,4 +93,15 @@ export const EVALUATION_CRITERIA = {
       1: 'No sentence forms attempted',
     },
   },
+};
+
+export const webhookConfig = {
+  retryAttempts: 3,
+  retryDelay: 5000, // 5 seconds
+  timeout: 10000,   // 10 seconds
+  events: {
+    PROGRESS_UPDATED: 'writing.progress.updated',
+    TEST_COMPLETED: 'writing.test.completed',
+    BAND_IMPROVED: 'writing.band.improved'
+  }
 }; 

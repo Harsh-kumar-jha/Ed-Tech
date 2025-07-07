@@ -42,4 +42,10 @@ enum LeaderboardType {
   WEEKLY
   MONTHLY
   GLOBAL
+}
+
+enum SubscriptionTier {
+  FREE
+  PREMIUM
+  ENTERPRISE
 } 

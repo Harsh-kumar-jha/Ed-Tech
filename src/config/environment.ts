@@ -17,9 +17,9 @@ export interface Environment {
   API_VERSION: string;
   BCRYPT_SALT_ROUNDS: number;
   
-  // OpenRouter Configuration
-  OPENROUTER_API_KEY: string;
-  OPENROUTER_API_BASE_URL: string;
+  // Groq Configuration
+  GROQ_API_KEY: string;
+  GROQ_API_BASE_URL: string;
 
   // Google OAuth Configuration
   GOOGLE_CLIENT_ID: string;
@@ -68,9 +68,9 @@ export const config: Environment = {
   API_VERSION: process.env.API_VERSION || 'v1',
   BCRYPT_SALT_ROUNDS: parseInt(process.env.BCRYPT_SALT_ROUNDS || '12', 10),
   
-  // OpenRouter Configuration
-  OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY || '',
-  OPENROUTER_API_BASE_URL: process.env.OPENROUTER_API_BASE_URL || 'https://openrouter.ai/api/v1',
+  // Groq Configuration
+  GROQ_API_KEY: process.env.GROQ_API_KEY || '',
+  GROQ_API_BASE_URL: process.env.GROQ_API_BASE_URL || 'https://api.groq.com/openai/v1',
 
   // Google OAuth Configuration
   GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || '',
@@ -91,8 +91,8 @@ export const config: Environment = {
 
   // 2Factor Configuration (SMS OTP)
   TWOFACTOR_API_KEY: process.env.TWOFACTOR_API_KEY || '',
-  TWOFACTOR_SMS_SENDER: process.env.TWOFACTOR_SMS_SENDER || 'IELTS EdTech',
-  TWOFACTOR_BASE_URL: process.env.TWOFACTOR_BASE_URL || 'https://2factor.in/API/V1'
+  TWOFACTOR_SMS_SENDER: process.env.TWOFACTOR_SMS_SENDER || '',
+  TWOFACTOR_BASE_URL: process.env.TWOFACTOR_BASE_URL || '',
 };
 
 export const isDevelopment = config.NODE_ENV === 'development';

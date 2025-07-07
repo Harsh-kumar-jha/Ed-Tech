@@ -4,7 +4,7 @@ import { databaseConfig } from './database';
 import { jwtConfig } from './jwt';
 import passport from './passport';
 import { socketConfig } from './socket';
-import { openRouterConfig } from './ai';
+import { groqConfig } from './ai';
 import { uploadConfig } from './upload';
 import { rateLimitConfig } from './rate-limit';
 
@@ -15,7 +15,7 @@ export {
   jwtConfig,
   passport,
   socketConfig,
-  openRouterConfig,
+  groqConfig,
   uploadConfig,
   rateLimitConfig,
 }; 

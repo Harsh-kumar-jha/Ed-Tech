@@ -11,7 +11,7 @@ export class Task1TemplateController {
       const userId = req.user.id;
 
       // Validate admin role
-      if (req.user.role !== UserRole.ADMIN) {
+      if (req.user.role !== 'ADMIN') {
         return res.status(403).json({
           error: 'Only administrators can manage task templates',
         });
@@ -52,7 +52,7 @@ export class Task1TemplateController {
       const userId = req.user.id;
 
       // Validate admin role
-      if (req.user.role !== UserRole.ADMIN) {
+      if (req.user.role !== 'ADMIN') {
         return res.status(403).json({
           error: 'Only administrators can view task templates',
         });
@@ -86,7 +86,7 @@ export class Task1TemplateController {
       const userId = req.user.id;
 
       // Validate admin role
-      if (req.user.role !== UserRole.ADMIN) {
+      if (req.user.role !== 'ADMIN') {
         return res.status(403).json({
           error: 'Only administrators can manage task templates',
         });
@@ -130,7 +130,7 @@ export class Task1TemplateController {
       const userId = req.user.id;
 
       // Validate admin role
-      if (req.user.role !== UserRole.ADMIN) {
+      if (req.user.role !== 'ADMIN') {
         return res.status(403).json({
           error: 'Only administrators can manage task templates',
         });
@@ -157,6 +157,50 @@ export class Task1TemplateController {
       console.error('Failed to delete template:', error);
       return res.status(500).json({
         error: 'Failed to delete template',
+      });
+    }
+  }
+
+  // Get template by ID
+  async getTemplateById(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+
+      const template = await this.prisma.writingTask1Template.findUnique({
+        where: { id },
+        select: {
+          id: true,
+          type: true,
+          prompt: true,
+          imageUrl: true,
+          isActive: true,
+          createdAt: true,
+          updatedAt: true
+        }
+      });
+
+      if (!template) {
+        return res.status(404).json({
+          success: false,
+          error: {
+            code: 'NOT_FOUND',
+            message: 'Template not found'
+          }
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        data: template
+      });
+    } catch (error) {
+      console.error('Failed to get template by ID:', error);
+      return res.status(500).json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: 'Failed to get template by ID'
+        }
       });
     }
   }

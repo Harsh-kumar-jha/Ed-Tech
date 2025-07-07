@@ -1,17 +1,29 @@
-import { Request, Response, NextFunction } from 'express';
-import { UserRole } from '../../../types/UserRole';
+import { Request, Response, NextFunction, RequestHandler } from 'express';
+import { getPrisma } from '../../../db/database';
 
-export const adminRoleMiddleware = (req: Request, res: Response, next: NextFunction) => {
+// Extend Express Request type to include user
+declare module 'express' {
+  interface Request {
+    user?: {
+      id: string;
+      role: 'STUDENT' | 'INSTRUCTOR' | 'ADMIN' | 'SUPER_ADMIN';
+    };
+  }
+}
+
+export const adminRoleMiddleware: RequestHandler = (req: Request, res: Response, next: NextFunction): void => {
   try {
-    if (!req.user || req.user.role !== UserRole.ADMIN) {
-      return res.status(403).json({
+    if (!req.user || req.user.role !== 'ADMIN') {
+      res.status(403).json({
         error: 'Access denied. Admin role required.',
       });
+      return;
     }
     next();
   } catch (error) {
-    return res.status(500).json({
+    res.status(500).json({
       error: 'Role verification failed',
     });
+    return;
   }
 }; 

@@ -5,23 +5,39 @@
 import { BaseEntity } from './base.interface';
 import { UserRole, DifficultyLevel } from '../types';
 
-export interface User {
+export enum SubscriptionTier {
+  FREE = 'FREE',
+  PREMIUM = 'PREMIUM',
+  ENTERPRISE = 'ENTERPRISE'
+}
+
+export interface IUser {
   id: string;
   email: string;
-  username: string;
-  firstName: string;
-  lastName: string;
+  username?: string;
+  firstName?: string;
+  lastName?: string;
   password: string;
   role: UserRole;
   isActive: boolean;
   isEmailVerified: boolean;
-  emailVerifiedAt: Date | null;
-  lastLoginAt: Date | null;
+  emailVerifiedAt?: Date;
+  phoneNumber?: string;
+  countryCode?: string;
   createdAt: Date;
   updatedAt: Date;
+  lastLoginAt?: Date;
+  provider: string;
+  subscriptionTier: SubscriptionTier;
+  subscriptionStatus: string;
+  subscriptionEndDate?: Date;
+  subscriptionFeatures: string[];
+  testCount: number;
+  premiumTestCount: number;
   googleId?: string;
+  facebookId?: string;
+  appleId?: string;
   microsoftId?: string;
-  provider?: string;
 }
 
 export interface UserWithoutPassword {

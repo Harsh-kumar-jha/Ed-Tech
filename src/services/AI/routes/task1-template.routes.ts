@@ -6,15 +6,20 @@ import { adminRoleMiddleware } from '../../Auth/middleware/role.middleware';
 const router = Router();
 const controller = new Task1TemplateController();
 
-// All routes require JWT authentication and admin role
+// Public routes (require only JWT auth)
 router.use(jwtMiddleware);
+
+// Get all templates with optional filters
+router.get('/', controller.getTemplates.bind(controller));
+
+// Get template by ID
+router.get('/:id', controller.getTemplateById.bind(controller));
+
+// Admin-only routes
 router.use(adminRoleMiddleware);
 
 // Create new template
 router.post('/', controller.createTemplate.bind(controller));
-
-// Get all templates with optional filters
-router.get('/', controller.getTemplates.bind(controller));
 
 // Update template
 router.put('/:id', controller.updateTemplate.bind(controller));

@@ -1,13 +1,12 @@
 import { config } from './environment';
 
-export const openRouterConfig = {
-  apiKey: config.OPENROUTER_API_KEY,
-  baseUrl: config.OPENROUTER_API_BASE_URL,
-  model: 'openrouter/cypher-alpha:free',
+export const groqConfig = {
+  apiKey: config.GROQ_API_KEY,
+  baseUrl: config.GROQ_API_BASE_URL || 'https://api.groq.com/openai/v1',
+  model: 'mixtral-8x7b-32768',  // Groq's most capable model
   headers: {
-    'Authorization': `Bearer ${config.OPENROUTER_API_KEY}`,
-    'HTTP-Referer': 'https://your-site.com', // Replace with your site URL
-    'X-Title': 'IELTS Writing Evaluation', // Your app name
+    'Authorization': `Bearer ${config.GROQ_API_KEY}`,
+    'Content-Type': 'application/json',
   },
   defaultParams: {
     temperature: 0.7,

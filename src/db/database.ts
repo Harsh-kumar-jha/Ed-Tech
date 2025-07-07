@@ -1,7 +1,10 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, SubscriptionTier } from '@prisma/client';
 import { TransactionCallback } from '../types';
 import { logError, logInfo } from '../utils/logger';
 import { DatabaseError } from '../utils/exceptions';
+
+// Export Prisma enums
+export { SubscriptionTier };
 
 // Global PrismaClient instance
 let prisma: PrismaClient;
