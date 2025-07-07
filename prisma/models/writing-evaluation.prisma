@@ -1,0 +1,69 @@
+// Writing Test Models
+
+model WritingTest {
+  id              String    @id @default(uuid())
+  userId          String
+  testSessionId   String    @unique
+  testType        String
+  status          String    @default("pending")
+  task1Prompt     String?
+  task2Prompt     String?
+  task1Response   String?
+  task2Response   String?
+  task1Band       Float?
+  task2Band       Float?
+  combinedBand    Float?
+  task1Feedback   Json?
+  task2Feedback   Json?
+  overallFeedback Json?
+  task1CompletedAt DateTime?
+  task2CompletedAt DateTime?
+  evaluatedAt     DateTime?
+  deleteQuestionsAt DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id])
+  task1Evaluation TaskEvaluation? @relation("Task1Evaluation")
+  task2Evaluation TaskEvaluation? @relation("Task2Evaluation")
+
+  @@index([userId])
+  @@index([testType])
+  @@index([status])
+  @@index([deleteQuestionsAt])
+  @@map("writing_tests")
+}
+
+model TaskEvaluation {
+  id           String    @id @default(uuid())
+  writingTestId String   @unique
+  taskType     String    // "task1" or "task2"
+  band         Float
+  feedback     String
+  strengths    String[]
+  improvements String[]
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  // Relations
+  writingTestTask1 WritingTest? @relation("Task1Evaluation", fields: [writingTestId], references: [id], onDelete: Cascade, map: "task1_evaluation_writing_test_fk")
+  writingTestTask2 WritingTest? @relation("Task2Evaluation", fields: [writingTestId], references: [id], onDelete: Cascade, map: "task2_evaluation_writing_test_fk")
+
+  @@map("task_evaluations")
+}
+
+model WritingProgress {
+  id              String   @id @default(uuid())
+  userId          String   @unique
+  testCount       Int      @default(0)
+  averageBand     Float?
+  bestBand        Float?
+  progressAnalysis Json?
+  lastUpdated     DateTime @updatedAt
+  
+  // Relations
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("writing_progress")
+} 

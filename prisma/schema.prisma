@@ -61,9 +61,11 @@ enum LeaderboardType {
   GLOBAL
 }
 
-// ===========================
-// Audit Logging Model
-// ===========================
+enum SubscriptionTier {
+  FREE
+  PREMIUM
+  ENTERPRISE
+}
 
 model AuditLog {
   id        String   @id @default(uuid())
@@ -85,9 +87,26 @@ model AuditLog {
   @@map("audit_logs")
 }
 
-// ===========================
-// File Upload Model
-// ===========================
+model OTPVerification {
+  id             String   @id @default(uuid())
+  identifier     String   // email or phone
+  identifierType String   // 'email' or 'phone'
+  otp            String
+  purpose        String   // 'login', 'password_reset', 'email_verification'
+  userId         String?
+  expiresAt      DateTime
+  attempts       Int      @default(0)
+  maxAttempts    Int      @default(3)
+  isUsed         Boolean  @default(false)
+  createdAt      DateTime @default(now())
+
+  // Relations
+  user User? @relation("UserOTPVerifications", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([identifier, purpose, isUsed])
+  @@index([expiresAt])
+  @@map("otp_verifications")
+}
 
 model FileUpload {
   id           String   @id @default(uuid())
@@ -101,14 +120,13 @@ model FileUpload {
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
 
+  // Relations
+  user User @relation(fields: [uploadedBy], references: [id])
+
   @@index([uploadedBy, purpose])
   @@index([createdAt])
   @@map("file_uploads")
 }
-
-// ===========================
-// IELTS Test Management Models
-// ===========================
 
 model IELTSTest {
   id             String          @id @default(uuid())
@@ -159,10 +177,6 @@ model TestQuestion {
   @@map("test_questions")
 }
 
-// ===========================
-// Leaderboard Model
-// ===========================
-
 model LeaderboardEntry {
   id             String          @id @default(uuid())
   userId         String
@@ -189,10 +203,6 @@ model LeaderboardEntry {
   @@map("leaderboard_entries")
 }
 
-// ===========================
-// Session Management Model
-// ===========================
-
 model Session {
   id        String   @id @default(uuid())
   userId    String
@@ -204,16 +214,12 @@ model Session {
   createdAt DateTime @default(now())
 
   // Relations
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation("UserSessions", fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, isActive])
   @@index([expiresAt])
   @@map("sessions")
 }
-
-// ===========================
-// Test Attempt and Results Models
-// ===========================
 
 model TestAttempt {
   id          String     @id @default(uuid())
@@ -291,37 +297,50 @@ model TestResult {
   @@map("test_results")
 }
 
-// ===========================
-// User Management Models
-// ===========================
-
 model User {
-  id              String    @id @default(uuid())
-  email           String    @unique
-  username        String    @unique
-  firstName       String
-  lastName        String
-  password        String
-  role            UserRole  @default(STUDENT)
-  isActive        Boolean   @default(true)
-  isEmailVerified Boolean   @default(false)
-  emailVerifiedAt DateTime?
-  lastLoginAt     DateTime?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  googleId        String?   @unique
-  microsoftId     String?   @unique
-  provider        String?
+  id                   String    @id @default(uuid())
+  email                String    @unique
+  username             String?   @unique
+  firstName            String?
+  lastName             String?
+  password             String
+  role                 UserRole  @default(STUDENT)
+  isActive             Boolean   @default(true)
+  isEmailVerified      Boolean   @default(false)
+  emailVerifiedAt      DateTime?
+  phoneNumber          String?
+  countryCode          String?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  lastLoginAt          DateTime?
+  provider             String    @default("local")
+  subscriptionTier     SubscriptionTier  @default(FREE)
+  subscriptionStatus   String    @default("active")  // active, cancelled, suspended
+  subscriptionEndDate  DateTime?
+  subscriptionFeatures String[]  // Array of enabled premium features
+  testCount           Int       @default(0)
+  premiumTestCount    Int       @default(0)  // Count of tests taken while premium
+
+  // OAuth fields
+  googleId            String?   @unique
+  facebookId          String?   @unique
+  appleId             String?   @unique
+  microsoftId         String?   @unique
 
   // Relations
-  profile      UserProfile?
-  testAttempts TestAttempt[]
-  testResults  TestResult[]
-  leaderboard  LeaderboardEntry[]
-  sessions     Session[]
-  auditLogs    AuditLog[]
-  createdTests IELTSTest[]  @relation("TestCreator")
-  otpRecords   OTPVerification[]
+  profile             UserProfile?
+  auditLogs           AuditLog[]
+  fileUploads         FileUpload[]
+  createdTests        IELTSTest[]        @relation("TestCreator")
+  testAttempts        TestAttempt[]
+  testResults         TestResult[]
+  leaderboardEntries  LeaderboardEntry[]
+  writingTests        WritingTest[]
+  writingProgress     WritingProgress?
+  createdTemplates    WritingTask1Template[] @relation("Task1TemplateCreator")
+  sessions            Session[]            @relation("UserSessions")
+  otpVerifications    OTPVerification[]    @relation("UserOTPVerifications")
+  webhookLogs         WebhookLog[]
 
   @@map("users")
 }
@@ -339,6 +358,8 @@ model UserProfile {
   targetScore  Float?
   currentLevel DifficultyLevel @default(BEGINNER)
   studyGoals   String[]
+  webhookUrl   String?         // URL for receiving webhook notifications
+  webhookSecret String?        // Secret for webhook signature verification
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
 
@@ -348,25 +369,105 @@ model UserProfile {
   @@map("user_profiles")
 }
 
+model WebhookLog {
+  id        String   @id @default(uuid())
+  userId    String
+  event     String
+  success   Boolean
+  timestamp DateTime @default(now())
+  error     String?
+  
+  // Relations
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-model OTPVerification {
-  id             String   @id @default(uuid())
-  identifier     String   // email or phone
-  identifierType String   // 'email' or 'phone'
-  otp            String
-  purpose        String   // 'login', 'password_reset', 'email_verification'
-  userId         String?
-  expiresAt      DateTime
-  attempts       Int      @default(0)
-  maxAttempts    Int      @default(3)
-  isUsed         Boolean  @default(false)
-  createdAt      DateTime @default(now())
+  @@index([userId, event])
+  @@index([timestamp])
+  @@map("webhook_logs")
+}
+
+model WritingTest {
+  id              String    @id @default(uuid())
+  userId          String
+  testSessionId   String    @unique
+  testType        String
+  status          String    @default("pending")
+  task1Prompt     String?
+  task2Prompt     String?
+  task1Response   String?
+  task2Response   String?
+  task1Band       Float?
+  task2Band       Float?
+  combinedBand    Float?
+  task1Feedback   Json?
+  task2Feedback   Json?
+  overallFeedback Json?
+  task1CompletedAt DateTime?
+  task2CompletedAt DateTime?
+  evaluatedAt     DateTime?
+  deleteQuestionsAt DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   // Relations
-  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id])
+  task1Evaluation TaskEvaluation? @relation("Task1Evaluation")
+  task2Evaluation TaskEvaluation? @relation("Task2Evaluation")
 
-  @@index([identifier, purpose, isUsed])
-  @@index([expiresAt])
-  @@map("otp_verifications")
+  @@index([userId])
+  @@index([testType])
+  @@index([status])
+  @@index([deleteQuestionsAt])
+  @@map("writing_tests")
+}
+
+model TaskEvaluation {
+  id           String    @id @default(uuid())
+  writingTestId String   @unique
+  taskType     String    // "task1" or "task2"
+  band         Float
+  feedback     String
+  strengths    String[]
+  improvements String[]
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  // Relations
+  writingTestTask1 WritingTest? @relation("Task1Evaluation", fields: [writingTestId], references: [id], onDelete: Cascade, map: "task1_evaluation_writing_test_fk")
+  writingTestTask2 WritingTest? @relation("Task2Evaluation", fields: [writingTestId], references: [id], onDelete: Cascade, map: "task2_evaluation_writing_test_fk")
+
+  @@map("task_evaluations")
+}
+
+model WritingProgress {
+  id              String   @id @default(uuid())
+  userId          String   @unique
+  testCount       Int      @default(0)
+  averageBand     Float?
+  bestBand        Float?
+  progressAnalysis Json?
+  lastUpdated     DateTime @updatedAt
+  
+  // Relations
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("writing_progress")
+}
+
+model WritingTask1Template {
+  id          String   @id @default(uuid())
+  type        String   // e.g., "Bar chart", "Line graph", "Pie chart", "Map", "Process", etc.
+  prompt      String   @db.Text
+  imageUrl    String   @map("image_url")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdBy   String   // Admin user ID who created this template
+  isActive    Boolean  @default(true)
+
+  // Relations
+  user User @relation("Task1TemplateCreator", fields: [createdBy], references: [id])
+
+  @@map("writing_task1_templates")
+  @@index([type])
+  @@index([createdBy])
 }
 

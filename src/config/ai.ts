@@ -1,9 +1,18 @@
 import { config } from './environment';
 
-// AI configuration
-export const aiConfig = {
-  baseUrl: config.OLLAMA_BASE_URL,
-  model: config.OLLAMA_MODEL,
-  timeout: parseInt(process.env.AI_TIMEOUT || '30000'),
-  maxRetries: parseInt(process.env.AI_MAX_RETRIES || '3'),
+export const groqConfig = {
+  apiKey: config.GROQ_API_KEY,
+  baseUrl: config.GROQ_API_BASE_URL || 'https://api.groq.com/openai/v1',
+  model: 'mixtral-8x7b-32768',  // Groq's most capable model
+  headers: {
+    'Authorization': `Bearer ${config.GROQ_API_KEY}`,
+    'Content-Type': 'application/json',
+  },
+  defaultParams: {
+    temperature: 0.7,
+    max_tokens: 1000,
+    top_p: 0.9,
+    frequency_penalty: 0.0,
+    presence_penalty: 0.0,
+  },
 }; 

@@ -1,0 +1,19 @@
+// Writing Task Templates
+
+model WritingTask1Template {
+  id          String   @id @default(uuid())
+  type        String   // e.g., "Bar chart", "Line graph", "Pie chart", "Map", "Process", etc.
+  prompt      String   @db.Text
+  imageUrl    String   @map("image_url")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdBy   String   // Admin user ID who created this template
+  isActive    Boolean  @default(true)
+
+  // Relations
+  user User @relation("Task1TemplateCreator", fields: [createdBy], references: [id])
+
+  @@map("writing_task1_templates")
+  @@index([type])
+  @@index([createdBy])
+} 

@@ -4,6 +4,6 @@ import { config } from './environment';
 export const jwtConfig = {
   secret: config.JWT_SECRET,
   expiresIn: config.JWT_EXPIRES_IN,
-  refreshSecret: process.env.JWT_REFRESH_SECRET || config.JWT_SECRET,
-  refreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '30d',
+  refreshSecret: config.JWT_REFRESH_SECRET,
+  refreshExpiresIn: config.JWT_REFRESH_EXPIRES_IN,
 }; 

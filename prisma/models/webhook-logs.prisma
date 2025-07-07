@@ -1,0 +1,13 @@
+model WebhookLog {
+  id        String   @id @default(uuid())
+  userId    String
+  event     String
+  success   Boolean
+  timestamp DateTime @default(now())
+  error     String?
+  payload   Json?
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId], name: "webhook_logs_userId_idx")
+  @@index([event], name: "webhook_logs_event_idx")
+} 

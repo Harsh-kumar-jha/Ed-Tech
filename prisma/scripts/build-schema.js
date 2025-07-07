@@ -64,26 +64,29 @@ function buildSchema() {
     if (fs.existsSync(MODELS_DIR)) {
       const modelFiles = fs.readdirSync(MODELS_DIR).filter(file => file.endsWith('.prisma'));
       
+      // Combine all model content first
+      let modelContent = '';
       modelFiles.forEach(file => {
         const filePath = path.join(MODELS_DIR, file);
         const content = fs.readFileSync(filePath, 'utf8');
-        
-        // Extract the category from the first comment line
-        const lines = content.split('\n');
-        const categoryLine = lines.find(line => line.trim().startsWith('//') && !line.includes('Relations'));
-        
-        if (categoryLine) {
-          schemaContent += '// ===========================\n';
-          schemaContent += `${categoryLine.trim()}\n`;
-          schemaContent += '// ===========================\n\n';
-        }
-        
-        // Remove comments and add the models
-        const cleanContent = content.replace(/^\/\/.*$/gm, '').trim();
-        if (cleanContent) {
-          schemaContent += cleanContent + '\n\n';
-        }
+        modelContent += content + '\n\n';
       });
+
+      // Remove duplicate model definitions
+      const models = new Map();
+      const modelRegex = /model\s+(\w+)\s*{[^}]*}/gs;
+      let match;
+      while ((match = modelRegex.exec(modelContent)) !== null) {
+        const [fullModel, modelName] = match;
+        if (!models.has(modelName)) {
+          models.set(modelName, fullModel);
+        }
+      }
+
+      // Add unique models to schema
+      for (const [modelName, modelDef] of models) {
+        schemaContent += modelDef + '\n\n';
+      }
     }
     
     // Write the combined schema

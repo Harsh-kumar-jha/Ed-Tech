@@ -67,6 +67,13 @@ export class ExternalServiceError extends AppError {
   }
 }
 
+export class AIError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'AIError';
+  }
+}
+
 // Error response interface
 interface ErrorResponse {
   success: false;

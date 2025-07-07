@@ -6,7 +6,7 @@
 import { 
   CreateUserRequest, 
   LoginRequest, 
-  User, 
+  IUser as User, 
   UserWithoutPassword 
 } from './index';
 import { ServiceResponse } from './base.interface';

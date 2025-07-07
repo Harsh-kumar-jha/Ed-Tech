@@ -4,7 +4,7 @@
  */
 
 import { ITokenService } from '../../../interface/services.interface';
-import { User } from '../../../interface';
+import { IUser as User } from '../../../interface';
 import { 
   generateTokens as utilGenerateTokens,
   verifyAccessToken as utilVerifyAccessToken,

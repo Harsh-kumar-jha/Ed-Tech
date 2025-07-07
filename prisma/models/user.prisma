@@ -1,31 +1,48 @@
 // User Management Models
 model User {
-  id              String    @id @default(uuid())
-  email           String    @unique
-  username        String    @unique
-  firstName       String
-  lastName        String
-  password        String
-  role            UserRole  @default(STUDENT)
-  isActive        Boolean   @default(true)
-  isEmailVerified Boolean   @default(false)
-  emailVerifiedAt DateTime?
-  lastLoginAt     DateTime?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  googleId        String?   @unique
-  microsoftId     String?   @unique
-  provider        String?
+  id                   String    @id @default(uuid())
+  email                String    @unique
+  username             String?   @unique
+  firstName            String?
+  lastName             String?
+  password             String
+  role                 UserRole  @default(STUDENT)
+  isActive             Boolean   @default(true)
+  isEmailVerified      Boolean   @default(false)
+  emailVerifiedAt      DateTime?
+  phoneNumber          String?
+  countryCode          String?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  lastLoginAt          DateTime?
+  provider             String    @default("local")
+  subscriptionTier     SubscriptionTier  @default(FREE)
+  subscriptionStatus   String    @default("active")  // active, cancelled, suspended
+  subscriptionEndDate  DateTime?
+  subscriptionFeatures String[]  // Array of enabled premium features
+  testCount           Int       @default(0)
+  premiumTestCount    Int       @default(0)  // Count of tests taken while premium
+
+  // OAuth fields
+  googleId            String?   @unique
+  facebookId          String?   @unique
+  appleId             String?   @unique
+  microsoftId         String?   @unique
 
   // Relations
-  profile      UserProfile?
-  testAttempts TestAttempt[]
-  testResults  TestResult[]
-  leaderboard  LeaderboardEntry[]
-  sessions     Session[]
-  auditLogs    AuditLog[]
-  createdTests IELTSTest[]  @relation("TestCreator")
-  otpRecords   OTPVerification[]
+  profile             UserProfile?
+  auditLogs           AuditLog[]
+  fileUploads         FileUpload[]
+  createdTests        IELTSTest[]        @relation("TestCreator")
+  testAttempts        TestAttempt[]
+  testResults         TestResult[]
+  leaderboardEntries  LeaderboardEntry[]
+  writingTests        WritingTest[]
+  writingProgress     WritingProgress?
+  createdTemplates    WritingTask1Template[] @relation("Task1TemplateCreator")
+  sessions            Session[]            @relation("UserSessions")
+  otpVerifications    OTPVerification[]    @relation("UserOTPVerifications")
+  webhookLogs         WebhookLog[]
 
   @@map("users")
 }
@@ -43,6 +60,8 @@ model UserProfile {
   targetScore  Float?
   currentLevel DifficultyLevel @default(BEGINNER)
   studyGoals   String[]
+  webhookUrl   String?         // URL for receiving webhook notifications
+  webhookSecret String?        // Secret for webhook signature verification
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
 
@@ -50,6 +69,23 @@ model UserProfile {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("user_profiles")
+}
+
+// Add webhook logging
+model WebhookLog {
+  id        String   @id @default(uuid())
+  userId    String
+  event     String
+  success   Boolean
+  timestamp DateTime @default(now())
+  error     String?
+  
+  // Relations
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, event])
+  @@index([timestamp])
+  @@map("webhook_logs")
 }
 
 // OTP Verification for phone/email verification and password reset
