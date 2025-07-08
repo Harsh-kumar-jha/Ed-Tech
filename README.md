@@ -1,4 +1,4 @@
-# IELTS EdTech Platform
+ IELTS EdTech Platform
 
 <div align="center">
   <img src="https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript">
