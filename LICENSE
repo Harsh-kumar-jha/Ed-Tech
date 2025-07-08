@@ -27,20 +27,20 @@ SOFTWARE.
 ### Third-Party Libraries
 This project uses several third-party libraries and frameworks. Each has its own license:
 
-- **Node.js**: MIT License
-- **Express.js**: MIT License
-- **TypeScript**: Apache License 2.0
-- **PostgreSQL**: PostgreSQL License
-- **Prisma**: Apache License 2.0
-- **Socket.IO**: MIT License
-- **Winston**: MIT License
-- **Joi**: BSD-3-Clause License
-- **bcrypt**: MIT License
-- **jsonwebtoken**: MIT License
-- **Multer**: MIT License
+- Node.js: MIT License
+- Express.js: MIT License
+- TypeScript: Apache License 2.0
+- PostgreSQL: PostgreSQL License
+- Prisma: Apache License 2.0
+- Socket.IO: MIT License
+- Winston: MIT License
+- Joi: BSD-3-Clause License
+- bcrypt: MIT License
+- jsonwebtoken: MIT License
+- Multer: MIT License
 
 ### AI Services
-- **Groq AI**: Subject to Groq's Terms of Service and API License
+- Groq AI: Subject to Groq's Terms of Service and API License
 
 ### Fonts and Assets
 - Any custom fonts or assets included in this project are either:
