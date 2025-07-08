@@ -1,0 +1,58 @@
+# Configuration for GitHub Labeler
+# Save this as: .github/labeler.yml
+
+# Documentation changes
+documentation:
+  - '*.md'
+  - 'docs/**/*'
+  - 'README*'
+
+# Frontend changes
+frontend:
+  - 'src/components/**/*'
+  - 'src/pages/**/*'
+  - '*.js'
+  - '*.jsx'
+  - '*.ts'
+  - '*.tsx'
+  - '*.css'
+  - '*.scss'
+  - '*.html'
+
+# Backend changes
+backend:
+  - 'src/api/**/*'
+  - 'src/server/**/*'
+  - '*.py'
+  - '*.java'
+  - '*.go'
+  - '*.php'
+
+# Tests
+tests:
+  - 'tests/**/*'
+  - '**/*.test.*'
+  - '**/*.spec.*'
+  - '__tests__/**/*'
+
+# Configuration files
+config:
+  - '.github/**/*'
+  - 'package.json'
+  - 'package-lock.json'
+  - 'yarn.lock'
+  - 'requirements.txt'
+  - 'Dockerfile'
+  - '*.yml'
+  - '*.yaml'
+  - '*.toml'
+  - '*.ini'
+
+# Dependencies
+dependencies:
+  - 'package.json'
+  - 'package-lock.json'
+  - 'yarn.lock'
+  - 'requirements.txt'
+  - 'Pipfile'
+  - 'composer.json'
