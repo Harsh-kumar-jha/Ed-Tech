@@ -10,6 +10,8 @@ import { WebhookService } from '../services/webhook.service';
 import axios from 'axios';
 import { groqConfig } from '../../../config/ai';
 import { SubscriptionTier, DifficultyLevel } from '@prisma/client';
+import { IELTS_CONFIG } from '../../../constants/ielts-config';
+import { TIME_LIMITS, WORD_COUNT_REQUIREMENTS } from '../config/writing-evaluation.config';
 
 // Define valid test types and task types
 const VALID_TEST_TYPES = ['academic', 'general_training'] as const;
@@ -48,6 +50,12 @@ interface TaskFeedback {
   band: number;
 }
 
+interface WritingTestSession {
+  testSessionId: string;
+  task1StartTime?: Date;
+  task2StartTime?: Date;
+}
+
 export class WritingEvaluationController {
   private prisma = getPrisma();
   private tokenService = new TokenService();
@@ -55,6 +63,9 @@ export class WritingEvaluationController {
   private apiKeyManager = APIKeyManagerService.getInstance();
   private testQuota = TestQuotaService.getInstance();
   private webhookService = WebhookService.getInstance();
+
+  // Add this as a class property
+  private activeTestSessions: Map<string, WritingTestSession> = new Map();
 
   async startWritingTest(req: Request, res: Response) {
     try {
@@ -137,6 +148,12 @@ export class WritingEvaluationController {
         },
       });
 
+      // Initialize session timing
+      this.activeTestSessions.set(test.testSessionId, {
+        testSessionId: test.testSessionId,
+        task1StartTime: new Date()
+      });
+
       // Schedule cleanup
       await this.cleanupService.scheduleCleanup(test.testSessionId);
 
@@ -166,7 +183,8 @@ export class WritingEvaluationController {
         data: {
           testSessionId: test.testSessionId,
           task1: task1Response,
-          timeLimit: 1200, // 20 minutes in seconds
+          timeLimit: TIME_LIMITS.task1,
+          timeRemaining: TIME_LIMITS.task1,
           quotaStatus: {
             remainingTests: quotaStatus.remainingTests - 1,
             totalTests: quotaStatus.totalTests + 1,
@@ -240,6 +258,78 @@ export class WritingEvaluationController {
     }
   }
 
+  // Add these helper methods
+  private async validateTaskTiming(test: any, taskType: 'task1' | 'task2', timeTaken: number): Promise<{ isValid: boolean; error?: string }> {
+    const timeLimit = taskType === 'task1' ? TIME_LIMITS.task1 : TIME_LIMITS.task2;
+    const session = this.activeTestSessions.get(test.testSessionId);
+    
+    if (!session) {
+      return {
+        isValid: false,
+        error: 'Test session not found. Please start a new test.'
+      };
+    }
+
+    if (taskType === 'task1') {
+      if (timeTaken > timeLimit) {
+        return {
+          isValid: false,
+          error: `Time limit exceeded for Task 1. Maximum allowed time is 20 minutes, but took ${Math.round(timeTaken / 60)} minutes.`
+        };
+      }
+    } else {
+      // Task 2 validation
+      if (!test.task1CompletedAt) {
+        return {
+          isValid: false,
+          error: 'You must complete Task 1 before starting Task 2.'
+        };
+      }
+
+      // Initialize Task 2 start time if not set
+      if (!session.task2StartTime) {
+        session.task2StartTime = new Date();
+        this.activeTestSessions.set(test.testSessionId, session);
+      }
+
+      if (timeTaken > timeLimit) {
+        return {
+          isValid: false,
+          error: `Time limit exceeded for Task 2. Maximum allowed time is 40 minutes, but took ${Math.round(timeTaken / 60)} minutes.`
+        };
+      }
+
+      // Check if Task 2 was started within allowed time window
+      const task1CompletionTime = new Date(test.task1CompletedAt).getTime();
+      const currentTime = Date.now();
+      const timeSinceTask1 = (currentTime - task1CompletionTime) / 1000; // Convert to seconds
+
+      if (timeSinceTask1 > 300) { // 5 minutes grace period after Task 1
+        return {
+          isValid: false,
+          error: 'You must start Task 2 within 5 minutes of completing Task 1.'
+        };
+      }
+    }
+
+    return { isValid: true };
+  }
+
+  private validateWordCount(taskType: 'task1' | 'task2', wordCount: number, testType: string): { isValid: boolean; error?: string } {
+    const minWords = taskType === 'task1' 
+      ? WORD_COUNT_REQUIREMENTS.task1[testType] 
+      : WORD_COUNT_REQUIREMENTS.task2[testType];
+
+    if (wordCount < minWords) {
+      return {
+        isValid: false,
+        error: `Word count too low for ${taskType}. Minimum required words: ${minWords}, provided: ${wordCount}`
+      };
+    }
+
+    return { isValid: true };
+  }
+
   async evaluateTask1(req: Request, res: Response) {
     try {
       const {
@@ -254,17 +344,26 @@ export class WritingEvaluationController {
       });
 
       if (!test) {
-        return res.status(404).json({ error: 'Test session not found' });
+        return res.status(404).json({ 
+          error: 'Test session not found. Please start a new test.' 
+        });
       }
 
-      // Check if Task 2 is ready
-      if (!test.task2Prompt) {
-        // If Task 2 isn't ready yet, generate it now
-        const task2Prompt = await this.generateTask2(test.testType);
-        await this.prisma.writingTest.update({
-          where: { testSessionId: test_session_id },
-          data: { task2Prompt },
+      // Validate timing
+      const timingValidation = await this.validateTaskTiming(test, 'task1', time_taken);
+      if (!timingValidation.isValid) {
+        return res.status(400).json({ 
+          error: timingValidation.error,
+          status: 'time_exceeded',
+          timeLimit: TIME_LIMITS.task1,
+          timeTaken: time_taken
         });
+      }
+
+      // Validate word count
+      const wordCountValidation = this.validateWordCount('task1', word_count, test.testType);
+      if (!wordCountValidation.isValid) {
+        return res.status(400).json({ error: wordCountValidation.error });
       }
 
       // Evaluate Task 1
@@ -277,7 +376,7 @@ export class WritingEvaluationController {
         test_type: test.testType,
       });
 
-      // Store results
+      // Store results but don't expose band score
       await this.prisma.writingTest.update({
         where: { testSessionId: test_session_id },
         data: {
@@ -289,11 +388,19 @@ export class WritingEvaluationController {
         },
       });
 
-      // Return Task 2 prompt along with evaluation
+      // Start Task 2 timer and return response
+      const session = this.activeTestSessions.get(test_session_id);
+      if (session) {
+        session.task2StartTime = new Date();
+        this.activeTestSessions.set(test_session_id, session);
+      }
+
       return res.status(200).json({
-        evaluation,
         task2Prompt: test.task2Prompt,
-        timeLimit: 40 * 60, // 40 minutes in seconds
+        timeLimit: TIME_LIMITS.task2,
+        message: 'Task 1 completed successfully. You have 40 minutes to complete Task 2.',
+        timeRemaining: TIME_LIMITS.task2,
+        status: 'task1_completed'
       });
     } catch (error) {
       console.error('Task 1 evaluation error:', error);
@@ -319,6 +426,26 @@ export class WritingEvaluationController {
 
       if (!test) {
         return res.status(404).json({ error: 'Test session not found' });
+      }
+
+      // Validate timing
+      const timingValidation = await this.validateTaskTiming(test, 'task2', time_taken);
+      if (!timingValidation.isValid) {
+        return res.status(400).json({ error: timingValidation.error });
+      }
+
+      // Validate word count
+      const wordCountValidation = this.validateWordCount('task2', word_count, test.testType);
+      if (!wordCountValidation.isValid) {
+        return res.status(400).json({ error: wordCountValidation.error });
+      }
+
+      // Ensure Task 1 is completed
+      if (!test.task1CompletedAt) {
+        return res.status(400).json({
+          error: 'Task 1 must be completed before submitting Task 2.',
+          status: 'invalid_sequence'
+        });
       }
 
       // Evaluate Task 2
@@ -353,14 +480,18 @@ export class WritingEvaluationController {
       // Update progress tracking
       await this.updateProgressTracking(test.userId);
 
-      // Get progress analysis if available
+      // Get progress analysis
       const progressAnalysis = await this.getProgressAnalysis(test.userId);
 
+      // After successful evaluation, cleanup the session
+      this.cleanupTestSession(test_session_id);
+
       return res.status(200).json({
-        task2Evaluation: evaluation,
+        status: 'completed',
         combinedBand,
         overallFeedback,
         progressAnalysis,
+        message: 'Writing test completed successfully.'
       });
     } catch (error) {
       console.error('Task 2 evaluation error:', error);
@@ -521,16 +652,31 @@ export class WritingEvaluationController {
     });
   }
 
-  private async generateProgressAnalysis(previousTests) {
-    const bands = previousTests.map(test => test.combinedBand);
+  private async generateProgressAnalysis(tests: any[]) {
+    if (tests.length === 0) return null;
+
+    const bands = tests.map(test => test.combinedBand);
     const trend = this.calculateTrend(bands);
     
+    // Analyze feedback from both tasks together
+    const allFeedback = tests.flatMap(test => {
+      const task1 = test.task1Feedback ? JSON.parse(JSON.stringify(test.task1Feedback)) : null;
+      const task2 = test.task2Feedback ? JSON.parse(JSON.stringify(test.task2Feedback)) : null;
+      return [task1, task2].filter(Boolean);
+    });
+
     return {
       trend,
-      consistent_strengths: this.identifyStrengths(previousTests),
-      persistent_weaknesses: this.identifyWeaknesses(previousTests),
-      recommended_focus: this.determineRecommendedFocus(previousTests),
-      study_plan: this.generateStudyPlan(previousTests),
+      consistent_strengths: this.identifyStrengths(allFeedback),
+      persistent_weaknesses: this.identifyWeaknesses(allFeedback),
+      recommended_focus: this.determineRecommendedFocus(allFeedback),
+      study_plan: this.generateStudyPlan(allFeedback),
+      overall_progress: {
+        starting_band: bands[bands.length - 1],
+        current_band: bands[0],
+        improvement: bands[0] - bands[bands.length - 1],
+        tests_completed: tests.length
+      }
     };
   }
 
@@ -544,6 +690,8 @@ export class WritingEvaluationController {
   }
 
   private calculateTrend(bands: number[]): 'improving' | 'stable' | 'declining' {
+    if (bands.length < 2) return 'stable';
+    
     const differences = bands.slice(0, -1).map((band, i) => bands[i + 1] - band);
     const average = differences.reduce((a, b) => a + b, 0) / differences.length;
     
@@ -648,32 +796,98 @@ export class WritingEvaluationController {
   }
 
   private async updateProgressTracking(userId: string) {
-    const tests = await this.prisma.writingTest.findMany({
+    try {
+      const tests = await this.prisma.writingTest.findMany({
+        where: { 
+          userId,
+          status: 'evaluated',
+          task1Band: { not: null },
+          task2Band: { not: null },
+          combinedBand: { not: null }
+        },
+        select: { 
+          combinedBand: true,
+          task1Feedback: true,
+          task2Feedback: true,
+          createdAt: true
+        },
+        orderBy: { createdAt: 'desc' }
+      });
+
+      if (tests.length === 0) return;
+
+      const bands = tests.map(t => t.combinedBand);
+      const averageBand = bands.reduce((a, b) => a + b, 0) / bands.length;
+      const bestBand = Math.max(...bands);
+      const previousBestBand = await this.getPreviousBestBand(userId);
+
+      // Get user subscription status
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+          subscriptionTier: true,
+          subscriptionStatus: true,
+          subscriptionEndDate: true
+        }
+      });
+
+      const isPremium = user?.subscriptionTier === 'PREMIUM' && 
+                       user?.subscriptionStatus === 'active' &&
+                       (!user?.subscriptionEndDate || user?.subscriptionEndDate > new Date());
+
+      // Update progress in database
+      await this.prisma.writingProgress.upsert({
+        where: { userId },
+        update: {
+          testCount: tests.length,
+          averageBand,
+          bestBand,
+          progressAnalysis: await this.generateProgressAnalysis(tests),
+          lastUpdated: new Date()
+        },
+        create: {
+          userId,
+          testCount: tests.length,
+          averageBand,
+          bestBand,
+          lastUpdated: new Date()
+        },
+      });
+
+      // Send notifications for premium users only
+      if (isPremium) {
+        // Notify on new best band score
+        if (bestBand > previousBestBand) {
+          await this.webhookService.sendWebhook(userId, 'writing.band.improved', {
+            previousBest: previousBestBand,
+            newBest: bestBand,
+            improvement: bestBand - previousBestBand
+          });
+        }
+
+        // Send progress update notification
+        await this.webhookService.sendWebhook(userId, 'writing.progress.updated', {
+          testCount: tests.length,
+          averageBand,
+          bestBand,
+          trend: this.calculateTrend(bands),
+          recentTests: tests.slice(0, 5).map(test => ({
+            date: test.createdAt,
+            band: test.combinedBand
+          }))
+        });
+      }
+    } catch (error) {
+      console.error('Error updating progress tracking:', error);
+    }
+  }
+
+  private async getPreviousBestBand(userId: string): Promise<number> {
+    const progress = await this.prisma.writingProgress.findUnique({
       where: { userId },
-      select: { combinedBand: true },
+      select: { bestBand: true }
     });
-
-    const bands = tests.map(t => t.combinedBand).filter(Boolean);
-    if (bands.length === 0) return;
-
-    const averageBand = bands.reduce((a, b) => a + b, 0) / bands.length;
-    const bestBand = Math.max(...bands);
-
-    await this.prisma.writingProgress.upsert({
-      where: { userId },
-      update: {
-        testCount: tests.length,
-        averageBand,
-        bestBand,
-        progressAnalysis: await this.generateProgressAnalysis(tests),
-      },
-      create: {
-        userId,
-        testCount: tests.length,
-        averageBand,
-        bestBand,
-      },
-    });
+    return progress?.bestBand || 0;
   }
 
   /**
@@ -683,6 +897,26 @@ export class WritingEvaluationController {
   async getProgress(req: Request, res: Response) {
     try {
       const userId = (req.user as any).id;
+
+      // Get user's subscription info
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+          subscriptionTier: true,
+          subscriptionStatus: true,
+          subscriptionEndDate: true,
+          premiumTestCount: true,
+          profile: {
+            select: {
+              webhookUrl: true
+            }
+          }
+        }
+      });
+
+      const isPremium = user?.subscriptionTier === 'PREMIUM' && 
+                       user?.subscriptionStatus === 'active' &&
+                       (!user?.subscriptionEndDate || user?.subscriptionEndDate > new Date());
 
       // Get completed tests
       const completedTests = await this.prisma.writingTest.findMany({
@@ -697,11 +931,6 @@ export class WritingEvaluationController {
         }
       });
 
-      // Get user's subscription info
-      const user = await this.prisma.user.findUnique({
-        where: { id: userId }
-      });
-
       // Check if user has enough tests
       if (completedTests.length === 0) {
         return res.status(404).json({
@@ -712,10 +941,6 @@ export class WritingEvaluationController {
           }
         });
       }
-
-      const isPremium = user?.subscriptionTier === SubscriptionTier.PREMIUM && 
-                       user?.subscriptionStatus === 'active' &&
-                       (!user?.subscriptionEndDate || user?.subscriptionEndDate > new Date());
 
       // For premium users, check premium test count
       if (isPremium && user.premiumTestCount < 5) {
@@ -729,91 +954,85 @@ export class WritingEvaluationController {
               required_premium_tests: 5,
               remaining_premium_tests: 5 - user.premiumTestCount,
               subscription_tier: user.subscriptionTier,
-              subscription_status: user.subscriptionStatus
-            }
-          }
-        });
-      }
-      
-      // For free users, check total test count
-      if (!isPremium && completedTests.length < 5) {
-        return res.status(400).json({
-          success: false,
-          error: {
-            code: 'INSUFFICIENT_DATA',
-            message: `Need at least 5 completed tests for progress analysis. Currently have ${completedTests.length} tests.`,
-            details: {
-              completed_tests: completedTests.length,
-              required_tests: 5,
-              remaining_tests: 5 - completedTests.length,
-              subscription_tier: user?.subscriptionTier,
-              subscription_status: user?.subscriptionStatus
+              subscription_status: user.subscriptionStatus,
+              notification_status: 'disabled'
             }
           }
         });
       }
 
-      // Get last 5 tests for analysis
+      // For free users, check total test count and return limited data
+      if (!isPremium) {
+        if (completedTests.length < 5) {
+          return res.status(400).json({
+            success: false,
+            error: {
+              code: 'INSUFFICIENT_DATA',
+              message: 'Upgrade to premium for detailed progress analysis and notifications.',
+              details: {
+                completed_tests: completedTests.length,
+                required_tests: 5,
+                remaining_tests: 5 - completedTests.length,
+                subscription_tier: user?.subscriptionTier,
+                subscription_status: user?.subscriptionStatus,
+                upgrade_message: 'Upgrade to premium for detailed progress tracking and notifications.'
+              }
+            }
+          });
+        }
+
+        // Return limited data for free users
+        const recentTests = completedTests.slice(0, 5);
+        return res.status(200).json({
+          success: true,
+          data: {
+            tests_completed: completedTests.length,
+            average_band: this.calculateAverageBand(recentTests),
+            best_band: Math.max(...recentTests.map(t => t.combinedBand || 0)),
+            upgrade_message: 'Upgrade to premium for detailed progress analysis and notifications.'
+          }
+        });
+      }
+
+      // Full analysis for premium users
       const recentTests = completedTests.slice(0, 5);
-
-      // Calculate overall progress
-      const overallProgress = {
-        tests_completed: completedTests.length,
-        average_band: this.calculateAverageBand(recentTests),
-        best_band: Math.max(...recentTests.map(t => t.combinedBand || 0)),
-        trend: this.calculateTrend(recentTests.map(t => t.combinedBand || 0)),
-        progress_percentage: this.calculateProgressPercentage(recentTests)
+      const analysis = {
+        overall_progress: {
+          tests_completed: completedTests.length,
+          average_band: this.calculateAverageBand(recentTests),
+          best_band: Math.max(...recentTests.map(t => t.combinedBand || 0)),
+          trend: this.calculateTrend(recentTests.map(t => t.combinedBand || 0)),
+          progress_percentage: this.calculateProgressPercentage(recentTests)
+        },
+        skill_analysis: {
+          task_achievement: await this.analyzeSkill(recentTests, 'task_achievement'),
+          coherence_cohesion: await this.analyzeSkill(recentTests, 'coherence_cohesion'),
+          lexical_resource: await this.analyzeSkill(recentTests, 'lexical_resource'),
+          grammatical_range: await this.analyzeSkill(recentTests, 'grammatical_range')
+        },
+        improvement_plan: {
+          immediate_focus: await this.generateImmediateFocus(recentTests),
+          medium_term_goals: await this.generateMediumTermGoals(recentTests),
+          long_term_goals: await this.generateLongTermGoals(recentTests)
+        },
+        notification_status: {
+          enabled: true,
+          events: ['writing.progress.updated', 'writing.band.improved'],
+          webhook_configured: Boolean(user?.profile?.webhookUrl)
+        }
       };
-
-      // Analyze skills
-      const skillAnalysis = {
-        task_achievement: await this.analyzeSkill(recentTests, 'task_achievement'),
-        coherence_cohesion: await this.analyzeSkill(recentTests, 'coherence_cohesion'),
-        lexical_resource: await this.analyzeSkill(recentTests, 'lexical_resource'),
-        grammatical_range: await this.analyzeSkill(recentTests, 'grammatical_range')
-      };
-
-      // Generate improvement plan
-      const improvementPlan = {
-        immediate_focus: await this.generateImmediateFocus(recentTests),
-        medium_term_goals: await this.generateMediumTermGoals(recentTests),
-        long_term_goals: await this.generateLongTermGoals(recentTests)
-      };
-
-      // Generate personalized tips
-      const personalizedTips = {
-        strengths_to_maintain: this.identifyStrengths(recentTests),
-        quick_wins: this.identifyQuickWins(recentTests),
-        common_mistakes: await this.analyzeCommonMistakes(recentTests)
-      };
-
-      // Prepare test history
-             const testHistory = recentTests.map(test => ({
-        test_date: test.task2CompletedAt,
-        test_type: test.testType,
-        band_score: test.combinedBand,
-        key_strengths: this.extractKeyStrengths(test),
-        key_improvements: this.extractKeyImprovements(test)
-      }));
 
       return res.status(200).json({
         success: true,
-        data: {
-          overall_progress: overallProgress,
-          skill_analysis: skillAnalysis,
-          improvement_plan: improvementPlan,
-          personalized_tips: personalizedTips,
-          test_history: testHistory
-        }
+        data: analysis
       });
-
     } catch (error) {
-      console.error('Failed to get progress analysis:', error);
+      console.error('Error getting progress:', error);
       return res.status(500).json({
         success: false,
         error: {
           code: 'INTERNAL_ERROR',
-          message: 'Failed to generate progress analysis'
+          message: 'Failed to get progress analysis'
         }
       });
     }
@@ -1073,7 +1292,6 @@ export class WritingEvaluationController {
             prompt: test.task1Prompt,
             response: test.task1Response,
             evaluation: test.task1Band ? {
-              band: test.task1Band,
               feedback: task1Feedback?.feedback,
               strengths: task1Feedback?.strengths || [],
               improvements: task1Feedback?.improvements || []
@@ -1083,13 +1301,14 @@ export class WritingEvaluationController {
             prompt: test.task2Prompt,
             response: test.task2Response,
             evaluation: test.task2Band ? {
-              band: test.task2Band,
               feedback: task2Feedback?.feedback,
               strengths: task2Feedback?.strengths || [],
               improvements: task2Feedback?.improvements || []
             } : null
           },
-          overallBand: test.combinedBand || null
+          // Only show combined band if both tasks are completed
+          overallBand: (test.task1Band && test.task2Band) ? test.combinedBand : null,
+          isCompleted: test.status === 'evaluated'
         };
       });
 
@@ -1106,14 +1325,16 @@ export class WritingEvaluationController {
         }
       });
     } catch (error) {
-      console.error('Failed to get writing test history:', error);
+      console.error('Error fetching writing test history:', error);
       return res.status(500).json({
-        success: false,
-        error: {
-          code: 'INTERNAL_ERROR',
-          message: 'Failed to get writing test history'
-        }
+        error: 'Failed to fetch writing test history',
+        details: error.message
       });
     }
+  }
+
+  // Add cleanup method for test sessions
+  private cleanupTestSession(testSessionId: string) {
+    this.activeTestSessions.delete(testSessionId);
   }
 } 

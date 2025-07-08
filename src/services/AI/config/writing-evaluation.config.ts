@@ -1,5 +1,21 @@
 import { groqConfig } from '../../../config/ai';
 
+export const TIME_LIMITS = {
+  task1: 1200, // 20 minutes in seconds
+  task2: 2400, // 40 minutes in seconds
+};
+
+export const WORD_COUNT_REQUIREMENTS = {
+  task1: {
+    academic: 150,
+    general_training: 150,
+  },
+  task2: {
+    academic: 250,
+    general_training: 250,
+  },
+};
+
 export const writingEvaluationConfig = {
   model: groqConfig.model,
   headers: groqConfig.headers,
@@ -18,22 +34,6 @@ export const writingEvaluationConfig = {
   - Areas of improvement
   - Strengths
   `,
-};
-
-export const WORD_COUNT_REQUIREMENTS = {
-  task1: {
-    academic: 150,
-    general_training: 150,
-  },
-  task2: {
-    academic: 250,
-    general_training: 250,
-  },
-};
-
-export const TIME_LIMITS = {
-  task1: 1200, // 20 minutes in seconds
-  task2: 2400, // 40 minutes in seconds
 };
 
 export const EVALUATION_CRITERIA = {
