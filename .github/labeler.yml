@@ -3,56 +3,68 @@
 
 # Documentation changes
 documentation:
-  - '*.md'
-  - 'docs/**/*'
-  - 'README*'
+  - changed-files:
+    - any-glob-to-any-file: 
+      - '*.md'
+      - 'docs/**/*'
+      - 'README*'
 
 # Frontend changes
 frontend:
-  - 'src/components/**/*'
-  - 'src/pages/**/*'
-  - '*.js'
-  - '*.jsx'
-  - '*.ts'
-  - '*.tsx'
-  - '*.css'
-  - '*.scss'
-  - '*.html'
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'src/components/**/*'
+      - 'src/pages/**/*'
+      - '*.js'
+      - '*.jsx'
+      - '*.ts'
+      - '*.tsx'
+      - '*.css'
+      - '*.scss'
+      - '*.html'
 
 # Backend changes
 backend:
-  - 'src/api/**/*'
-  - 'src/server/**/*'
-  - '*.py'
-  - '*.java'
-  - '*.go'
-  - '*.php'
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'src/api/**/*'
+      - 'src/server/**/*'
+      - '*.py'
+      - '*.java'
+      - '*.go'
+      - '*.php'
 
 # Tests
 tests:
-  - 'tests/**/*'
-  - '**/*.test.*'
-  - '**/*.spec.*'
-  - '__tests__/**/*'
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'tests/**/*'
+      - '**/*.test.*'
+      - '**/*.spec.*'
+      - '__tests__/**/*'
 
 # Configuration files
 config:
-  - '.github/**/*'
-  - 'package.json'
-  - 'package-lock.json'
-  - 'yarn.lock'
-  - 'requirements.txt'
-  - 'Dockerfile'
-  - '*.yml'
-  - '*.yaml'
-  - '*.toml'
-  - '*.ini'
+  - changed-files:
+    - any-glob-to-any-file:
+      - '.github/**/*'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'yarn.lock'
+      - 'requirements.txt'
+      - 'Dockerfile'
+      - '*.yml'
+      - '*.yaml'
+      - '*.toml'
+      - '*.ini'
 
 # Dependencies
 dependencies:
-  - 'package.json'
-  - 'package-lock.json'
-  - 'yarn.lock'
-  - 'requirements.txt'
-  - 'Pipfile'
-  - 'composer.json'
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'package.json'
+      - 'package-lock.json'
+      - 'yarn.lock'
+      - 'requirements.txt'
+      - 'Pipfile'
+      - 'composer.json'
