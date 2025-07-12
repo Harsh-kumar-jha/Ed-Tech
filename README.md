@@ -50,6 +50,29 @@ The IELTS EdTech Platform is a comprehensive, open-source solution designed to r
 - **⚡ Real-time Communication**: Live features powered by Socket.IO
 - **📁 File Management**: Support for audio, video, and document uploads
 - **🔐 Secure Authentication**: JWT-based auth with OAuth2 support (Google, Microsoft)
+- **🔒 Global Test Session Management**: Prevents concurrent module tests for better resource management
+
+### 🎯 Global Test Session Management
+
+The platform includes a sophisticated **Global Test Session Management System** that ensures:
+
+- **Single Active Session Rule**: Users can only have one active test session across all IELTS modules at any time
+- **Cross-Module Prevention**: Starting a Reading test prevents starting Writing, Listening, or Speaking tests simultaneously
+- **Session Lifecycle Tracking**: Complete management from session creation to completion/abandonment
+- **Automatic Cleanup**: Expired sessions are automatically cleaned up to maintain data integrity
+- **User-Friendly Feedback**: Clear error messages when trying to start multiple tests
+
+#### Key Benefits:
+- **Prevents Resource Conflicts**: Users can't accidentally start multiple tests
+- **Better User Experience**: Clear feedback about active sessions across modules
+- **Data Integrity**: Ensures consistent test session state
+- **Scalable Design**: Easily extensible to new IELTS modules
+
+#### API Endpoints:
+- `GET /api/v1/test-session/active` - Check current active session
+- `POST /api/v1/test-session/abandon` - Abandon current active session
+- `GET /api/v1/test-session/history` - Get session history
+- `POST /api/v1/test-session/cleanup-expired` - Admin cleanup of expired sessions
 
 ## 🏗️ Technical Architecture
 
@@ -182,8 +205,25 @@ Visit `http://localhost:3000` to access the application!
 | [API Documentation](./api-docs/) | Complete API reference and examples |
 | [Authentication Guide](./api-docs/auth.api.docs.md) | Authentication and authorization |
 | [Writing Evaluation API](./api-docs/writing-evaluation.api.docs.md) | AI-powered writing assessment |
+| [Global Test Session System](./GLOBAL-TEST-SESSION-SYSTEM.md) | Global session management documentation |
 | [Contributing Guide](./CONTRIBUTING.md) | How to contribute to the project |
 | [Code of Conduct](./CODE_OF_CONDUCT.md) | Community guidelines |
+
+### 🔗 Key API Endpoints
+
+#### Reading Module
+- `GET /api/v1/reading/test-sets` - Get all reading test sets
+- `GET /api/v1/reading/test-sets/:id` - Get specific test set details
+- `POST /api/v1/reading/start-test/:testSetId` - Start a reading test session
+- `POST /api/v1/reading/submit-answers` - Submit reading test answers
+- `GET /api/v1/reading/session/:sessionId` - Get test session details
+- `POST /api/v1/reading/session/:sessionId/abandon` - Abandon test session
+
+#### Global Test Session Management
+- `GET /api/v1/test-session/active` - Check current active session
+- `POST /api/v1/test-session/abandon` - Abandon current active session
+- `GET /api/v1/test-session/history` - Get session history
+- `POST /api/v1/test-session/cleanup-expired` - Admin cleanup of expired sessions
 
 ## 🤝 Contributing
 

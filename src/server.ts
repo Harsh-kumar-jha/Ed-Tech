@@ -10,11 +10,11 @@ import session from 'express-session';
 import passport from './config/passport';
 
 import { config, corsConfig, rateLimitConfig, socketConfig } from './config';
-import { 
-  globalErrorHandler, 
-  notFoundHandler, 
-  handleUncaughtException, 
-  handleUnhandledRejection 
+import {
+  globalErrorHandler,
+  notFoundHandler,
+  handleUncaughtException,
+  handleUnhandledRejection,
 } from './utils/exceptions';
 import { accessLogger, logInfo, logError } from './utils/logger';
 import { initializePrisma, checkDatabaseHealth } from './utils/database';
@@ -22,13 +22,9 @@ import { requestLogger } from './common';
 import { cleanupJobs, writingCleanupJob } from './utils/cleanup-jobs';
 
 // Import routes
-import { 
-  authRoutes, 
-  ieltsRoutes, 
-  profileRoutes, 
-  leaderboardRoutes, 
-  aiRoutes 
-} from './services';
+import { authRoutes, ieltsRoutes, profileRoutes, leaderboardRoutes, aiRoutes } from './services';
+import readingRoutes from './services/Ielts/routes/reading-module.routes';
+import globalTestSessionRoutes from './services/Ielts/routes/global-test-session.routes';
 
 // Handle uncaught exceptions and unhandled rejections
 handleUncaughtException();
@@ -46,13 +42,13 @@ export class Server {
     try {
       logInfo('Server initialization started', { component: 'Server' });
       this.app = express();
-      
+
       logInfo('HTTP server created', { component: 'Server' });
       this.server = createServer(this.app);
-      
-      logInfo('Socket.IO initialized', { 
+
+      logInfo('Socket.IO initialized', {
         component: 'Server',
-        allowedOrigins: config.ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
+        allowedOrigins: config.ALLOWED_ORIGINS.split(',').map(origin => origin.trim()),
       });
       this.io = new SocketIOServer(this.server, {
         cors: {
@@ -60,14 +56,14 @@ export class Server {
           credentials: true,
         },
       });
-      
+
       logInfo('Starting server initialization methods', { component: 'Server' });
       // Database initialization moved to start() method (async)
       this.initializeMiddleware();
       this.initializeRoutes();
       this.initializeSocketIO();
       this.initializeErrorHandling();
-      
+
       logInfo('Server constructor completed successfully', { component: 'Server' });
     } catch (error) {
       logError('Error in Server constructor', error);
@@ -79,7 +75,7 @@ export class Server {
     try {
       // Initialize Prisma
       initializePrisma();
-      
+
       // Check database health
       const isHealthy = await checkDatabaseHealth();
       if (!isHealthy) {
@@ -87,7 +83,7 @@ export class Server {
         logInfo('Application will start but database-dependent features may not work');
         return; // Don't exit, continue startup
       }
-      
+
       logInfo('Database initialized successfully');
     } catch (error) {
       logError('Database initialization failed - continuing without database connection', error);
@@ -98,16 +94,18 @@ export class Server {
 
   private initializeMiddleware(): void {
     // Security middleware
-    this.app.use(helmet({
-      contentSecurityPolicy: {
-        directives: {
-          defaultSrc: ["'self'"],
-          styleSrc: ["'self'", "'unsafe-inline'"],
-          scriptSrc: ["'self'"],
-          imgSrc: ["'self'", "data:", "https:"],
+    this.app.use(
+      helmet({
+        contentSecurityPolicy: {
+          directives: {
+            defaultSrc: ["'self'"],
+            styleSrc: ["'self'", "'unsafe-inline'"],
+            scriptSrc: ["'self'"],
+            imgSrc: ["'self'", 'data:', 'https:'],
+          },
         },
-      },
-    }));
+      })
+    );
 
     // CORS
     this.app.use(cors(corsConfig));
@@ -130,13 +128,15 @@ export class Server {
     if (config.NODE_ENV === 'development') {
       this.app.use(morgan('dev'));
     } else {
-      this.app.use(morgan('combined', {
-        stream: {
-          write: (message: string) => {
-            accessLogger.info(message.trim());
-          }
-        }
-      }));
+      this.app.use(
+        morgan('combined', {
+          stream: {
+            write: (message: string) => {
+              accessLogger.info(message.trim());
+            },
+          },
+        })
+      );
     }
 
     // Health check endpoint
@@ -172,6 +172,8 @@ export class Server {
         endpoints: {
           auth: `/api/${config.API_VERSION}/auth`,
           tests: `/api/${config.API_VERSION}/tests`,
+          reading: `/api/${config.API_VERSION}/reading`,
+          testSession: `/api/${config.API_VERSION}/test-session`,
           profile: `/api/${config.API_VERSION}/profile`,
           leaderboard: `/api/${config.API_VERSION}/leaderboard`,
           ai: `/api/${config.API_VERSION}/ai`,
@@ -180,16 +182,18 @@ export class Server {
     });
 
     // Session middleware (required for Passport OAuth)
-    this.app.use(session({
-      secret: config.JWT_SECRET,
-      resave: false,
-      saveUninitialized: false,
-      cookie: { 
-        secure: config.NODE_ENV === 'production',  // Only use secure cookies in production
-        sameSite: config.NODE_ENV === 'production' ? 'none' : 'lax'  // Adjust sameSite based on environment
-      },
-      proxy: config.NODE_ENV === 'production'  // Only trust proxy in production
-    }));
+    this.app.use(
+      session({
+        secret: config.JWT_SECRET,
+        resave: false,
+        saveUninitialized: false,
+        cookie: {
+          secure: config.NODE_ENV === 'production', // Only use secure cookies in production
+          sameSite: config.NODE_ENV === 'production' ? 'none' : 'lax', // Adjust sameSite based on environment
+        },
+        proxy: config.NODE_ENV === 'production', // Only trust proxy in production
+      })
+    );
 
     // Trust proxy - required for secure cookies behind a proxy
     if (config.NODE_ENV === 'production') {
@@ -204,10 +208,10 @@ export class Server {
   private initializeRoutes(): void {
     try {
       logInfo('Routes initialization started', { component: 'Server' });
-      
+
       // API Routes
       const apiRouter = express.Router();
-      
+
       // Test endpoint
       apiRouter.get('/test', (req, res) => {
         logInfo('Test endpoint accessed', { component: 'Router', endpoint: '/test' });
@@ -219,31 +223,36 @@ export class Server {
       });
 
       logInfo('Mounting service routes', { component: 'Server' });
-      
+
       logInfo('Auth routes mounted', { component: 'Router', route: '/auth' });
       apiRouter.use('/auth', authRoutes);
-      
+
       logInfo('IELTS routes mounted', { component: 'Router', route: '/ielts' });
       apiRouter.use('/ielts', ieltsRoutes);
-      
+      logInfo('Reading Module routes mounted', { component: 'Router', route: '/reading' });
+      apiRouter.use('/reading', readingRoutes);
+
+      logInfo('Global Test Session routes mounted', { component: 'Router', route: '/test-session' });
+      apiRouter.use('/test-session', globalTestSessionRoutes);
+
       logInfo('Profile routes mounted', { component: 'Router', route: '/profile' });
       apiRouter.use('/profile', profileRoutes);
-      
+
       logInfo('Leaderboard routes mounted', { component: 'Router', route: '/leaderboard' });
       apiRouter.use('/leaderboard', leaderboardRoutes);
-      
+
       logInfo('AI routes mounted', { component: 'Router', route: '/ai' });
       apiRouter.use('/ai', aiRoutes);
-      
+
       // Mount API routes
       this.app.use(`/api/${config.API_VERSION}`, apiRouter);
 
       // Static files (if needed)
       this.app.use('/uploads', express.static('uploads'));
-      
-      logInfo('Routes initialized successfully', { 
+
+      logInfo('Routes initialized successfully', {
         component: 'Server',
-        apiVersion: config.API_VERSION
+        apiVersion: config.API_VERSION,
       });
     } catch (error) {
       logError('Error initializing routes', error);
@@ -252,7 +261,7 @@ export class Server {
   }
 
   private initializeSocketIO(): void {
-    this.io.on('connection', (socket) => {
+    this.io.on('connection', socket => {
       logInfo('Socket connection established', { socketId: socket.id });
 
       // Handle socket events
@@ -266,11 +275,11 @@ export class Server {
         logInfo('User left room', { socketId: socket.id, room });
       });
 
-      socket.on('disconnect', (reason) => {
+      socket.on('disconnect', reason => {
         logInfo('Socket disconnected', { socketId: socket.id, reason });
       });
 
-      socket.on('error', (error) => {
+      socket.on('error', error => {
         logError('Socket error', error, { socketId: socket.id });
       });
     });
@@ -286,17 +295,17 @@ export class Server {
 
   public async start(): Promise<void> {
     try {
-      logInfo('Server startup initiated', { 
+      logInfo('Server startup initiated', {
         component: 'Server',
         port: config.PORT,
-        environment: config.NODE_ENV
+        environment: config.NODE_ENV,
       });
 
       // Initialize database before starting server
       await this.initializeDatabase();
-      
+
       const port = config.PORT;
-      
+
       this.server.listen(port, () => {
         logInfo(`🚀 Server started successfully`, {
           port,
@@ -323,7 +332,7 @@ export class Server {
       // Graceful shutdown
       const gracefulShutdown = (signal: string) => {
         logInfo(`Received ${signal}, shutting down gracefully`);
-        
+
         this.server.close(() => {
           logInfo('Server closed');
           process.exit(0);
@@ -338,7 +347,6 @@ export class Server {
 
       process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
       process.on('SIGINT', () => gracefulShutdown('SIGINT'));
-      
     } catch (error) {
       logError('Error starting server', error);
       process.exit(1);
@@ -352,4 +360,4 @@ export class Server {
   public getIO(): SocketIOServer {
     return this.io;
   }
-} 
+}

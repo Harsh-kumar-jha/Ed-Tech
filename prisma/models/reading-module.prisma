@@ -1,0 +1,188 @@
+// ===========================
+// READING MODULE MODELS
+// ===========================
+
+model ReadingTestSet {
+  id                String                 @id @default(uuid())
+  testId            String                 @unique // From uploaded JSON structure (e.g., "test_1")
+  title             String?
+  description       String?
+  difficulty        DifficultyLevel        @default(INTERMEDIATE)
+  timeLimit         Int                    @default(3600) // 60 minutes in seconds
+  totalQuestions    Int                    @default(40) // Total questions across 3 passages
+  isActive          Boolean                @default(true)
+  createdBy         String
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+
+  // Relations
+  creator           User                   @relation("ReadingTestSetCreator", fields: [createdBy], references: [id])
+  passages          ReadingPassage[]
+  attempts          ReadingTestAttempt[]
+  results           ReadingTestResult[]
+  userTestHistory   UserReadingTestHistory[]
+
+  @@index([difficulty, isActive])
+  @@index([createdAt])
+  @@map("reading_test_sets")
+}
+
+model ReadingPassage {
+  id                String                 @id @default(uuid())
+  testSetId         String
+  passageId         String                 // From JSON (e.g., "passage_1", "passage_2", "passage_3")
+  passageNumber     Int                    // 1, 2, or 3
+  title             String
+  content           String                 @db.Text
+  wordCount         Int?
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+
+  // Relations
+  testSet           ReadingTestSet         @relation(fields: [testSetId], references: [id], onDelete: Cascade)
+  questions         ReadingQuestion[]
+
+  @@unique([testSetId, passageNumber])
+  @@index([testSetId, passageNumber])
+  @@map("reading_passages")
+}
+
+model ReadingQuestion {
+  id                String                 @id @default(uuid())
+  passageId         String
+  questionNumber    Int                    // Global question number (1-40)
+  questionType      ReadingQuestionType
+  questionText      String                 @db.Text
+  options           String[]               // For multiple choice questions
+  correctAnswer     String
+  points            Float                  @default(1.0)
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+
+  // Relations
+  passage           ReadingPassage         @relation(fields: [passageId], references: [id], onDelete: Cascade)
+  answers           ReadingAnswer[]
+
+  @@unique([passageId, questionNumber])
+  @@index([passageId, questionNumber])
+  @@map("reading_questions")
+}
+
+model ReadingTestAttempt {
+  id                String                 @id @default(uuid())
+  userId            String
+  testSetId         String
+  status            TestStatus             @default(NOT_STARTED)
+  startedAt         DateTime               @default(now())
+  completedAt       DateTime?
+  submittedAt       DateTime?
+  timeSpent         Int                    @default(0) // in seconds
+  score             Float?
+  totalScore        Float                  @default(40) // Total possible score
+  bandScore         Float?                 // IELTS band score (0-9)
+  percentage        Float?
+  aiSummary         String?                @db.Text
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+
+  // Relations
+  user              User                   @relation("UserReadingAttempts", fields: [userId], references: [id])
+  testSet           ReadingTestSet         @relation(fields: [testSetId], references: [id])
+  answers           ReadingAnswer[]
+  result            ReadingTestResult?
+
+  @@index([userId, testSetId, status])
+  @@index([userId, createdAt])
+  @@map("reading_test_attempts")
+}
+
+model ReadingAnswer {
+  id                String                 @id @default(uuid())
+  attemptId         String
+  questionId        String
+  questionNumber    Int
+  userAnswer        String
+  isCorrect         Boolean?
+  pointsEarned      Float                  @default(0)
+  timeSpent         Int                    @default(0) // in seconds
+  aiEvaluation      Json?                  // AI feedback object
+  createdAt         DateTime               @default(now())
+
+  // Relations
+  attempt           ReadingTestAttempt     @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  question          ReadingQuestion        @relation(fields: [questionId], references: [id])
+
+  @@unique([attemptId, questionId])
+  @@index([attemptId, questionNumber])
+  @@map("reading_answers")
+}
+
+model ReadingTestResult {
+  id                String                 @id @default(uuid())
+  userId            String
+  testSetId         String
+  attemptId         String                 @unique
+  score             Float
+  totalScore        Float                  @default(40)
+  bandScore         Float                  // IELTS band score (0-9)
+  percentage        Float
+  timeSpent         Int                    // in seconds
+  correctAnswers    Int
+  wrongAnswers      Int
+  skippedAnswers    Int
+  passageScores     Json                   // Scores breakdown by passage
+  questionTypeScores Json                  // Scores breakdown by question type
+  strengths         String[]               // Areas where user performed well
+  weaknesses        String[]               // Areas needing improvement
+  aiSummary         String?                @db.Text
+  aiFeedback        Json?                  // Detailed AI feedback
+  createdAt         DateTime               @default(now())
+
+  // Relations
+  user              User                   @relation("UserReadingResults", fields: [userId], references: [id])
+  testSet           ReadingTestSet         @relation(fields: [testSetId], references: [id])
+  attempt           ReadingTestAttempt     @relation(fields: [attemptId], references: [id])
+
+  @@index([userId, createdAt])
+  @@index([testSetId, createdAt])
+  @@index([bandScore])
+  @@map("reading_test_results")
+}
+
+model UserReadingTestHistory {
+  id                String                 @id @default(uuid())
+  userId            String
+  testSetId         String
+  completedAt       DateTime               @default(now())
+
+  // Relations
+  user              User                   @relation("UserReadingTestHistory", fields: [userId], references: [id])
+  testSet           ReadingTestSet         @relation(fields: [testSetId], references: [id])
+
+  @@unique([userId, testSetId])
+  @@index([userId, completedAt])
+  @@map("user_reading_test_history")
+}
+
+model ReadingPerformanceAnalytics {
+  id                String                 @id @default(uuid())
+  userId            String                 @unique
+  totalTests        Int                    @default(0)
+  averageBandScore  Float?
+  bestBandScore     Float?
+  latestBandScore   Float?
+  averageTimeSpent  Int?                   // in seconds
+  strongQuestionTypes String[]             // Question types user excels in
+  weakQuestionTypes  String[]              // Question types user struggles with
+  lastTestDate      DateTime?
+  next24HourTest    DateTime?              // When user can take next test (premium only)
+  progressTrend     Json?                  // Last 5 test performance trend
+  aiInsights        Json?                  // AI-generated insights and recommendations
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+
+  // Relations
+  user              User                   @relation("UserReadingAnalytics", fields: [userId], references: [id])
+
+  @@map("reading_performance_analytics")
+}
