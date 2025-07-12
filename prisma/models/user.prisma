@@ -43,6 +43,16 @@ model User {
   sessions            Session[]            @relation("UserSessions")
   otpVerifications    OTPVerification[]    @relation("UserOTPVerifications")
   webhookLogs         WebhookLog[]
+  
+  // Reading Module Relations
+  createdReadingTestSets    ReadingTestSet[]         @relation("ReadingTestSetCreator")
+  readingTestAttempts       ReadingTestAttempt[]     @relation("UserReadingAttempts")
+  readingTestResults        ReadingTestResult[]      @relation("UserReadingResults")
+  readingTestHistory        UserReadingTestHistory[] @relation("UserReadingTestHistory")
+  readingAnalytics          ReadingPerformanceAnalytics? @relation("UserReadingAnalytics")
+  
+  // Global Test Session Relations
+  globalTestSessions        GlobalTestSession[]      @relation("UserGlobalTestSessions")
 
   @@map("users")
 }

@@ -1,0 +1,25 @@
+// Global Test Session Management Model
+model GlobalTestSession {
+  id                String            @id @default(uuid())
+  userId            String
+  module            IELTSModule       // READING, WRITING, LISTENING, SPEAKING
+  moduleTestId      String            // ID of the specific module test (readingTestSetId, writingTestId, etc.)
+  moduleAttemptId   String            // ID of the module-specific attempt
+  status            TestStatus        @default(NOT_STARTED)
+  startedAt         DateTime          @default(now())
+  lastActivityAt    DateTime          @default(now())
+  expiresAt         DateTime          // Auto-expire after time limit
+  timeLimit         Int               // in seconds
+  isActive          Boolean           @default(true)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  // Relations
+  user User @relation("UserGlobalTestSessions", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, isActive]) // Only one active session per user
+  @@index([userId, status])
+  @@index([expiresAt])
+  @@index([isActive])
+  @@map("global_test_sessions")
+}
