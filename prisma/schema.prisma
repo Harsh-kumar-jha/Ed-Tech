@@ -458,6 +458,11 @@ model WritingTask1Template {
   type        String   // e.g., "Bar chart", "Line graph", "Pie chart", "Map", "Process", etc.
   prompt      String   @db.Text
   imageUrl    String   @map("image_url")
+  imagePublicId String? @map("image_public_id") // Cloudinary public ID for deletion
+  description String?  @db.Text // Optional template description
+  difficulty  String?  // beginner, intermediate, advanced
+  testType    String?  @map("test_type") // academic, general_training
+  tags        String[] @default([]) // Array of tags for categorization
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   createdBy   String   // Admin user ID who created this template
@@ -469,5 +474,8 @@ model WritingTask1Template {
   @@map("writing_task1_templates")
   @@index([type])
   @@index([createdBy])
+  @@index([difficulty])
+  @@index([testType])
+  @@index([isActive])
 }
 

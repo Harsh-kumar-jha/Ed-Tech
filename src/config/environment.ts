@@ -42,6 +42,12 @@ export interface Environment {
   TWOFACTOR_API_KEY: string;
   TWOFACTOR_SMS_SENDER: string;
   TWOFACTOR_BASE_URL: string;
+
+  // Cloudinary Configuration
+  CLOUDINARY_CLOUD_NAME: string;
+  CLOUDINARY_API_KEY: string;
+  CLOUDINARY_API_SECRET: string;
+  CLOUDINARY_SECURE: boolean;
 }
 
 // Helper to determine the default callback URL based on environment
@@ -93,6 +99,12 @@ export const config: Environment = {
   TWOFACTOR_API_KEY: process.env.TWOFACTOR_API_KEY || '',
   TWOFACTOR_SMS_SENDER: process.env.TWOFACTOR_SMS_SENDER || '',
   TWOFACTOR_BASE_URL: process.env.TWOFACTOR_BASE_URL || '',
+
+  // Cloudinary Configuration
+  CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME || '',
+  CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY || '',
+  CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET || '',
+  CLOUDINARY_SECURE: process.env.CLOUDINARY_SECURE === 'true' || true,
 };
 
 export const isDevelopment = config.NODE_ENV === 'development';

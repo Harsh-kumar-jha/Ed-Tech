@@ -19,18 +19,19 @@ export const initializePrisma = (): PrismaClient => {
         { emit: 'event', level: 'info' },
         { emit: 'event', level: 'warn' },
       ],
+      errorFormat: 'pretty',
     });
 
-      // Setup logging for development
-  if (process.env.NODE_ENV === 'development') {
-    prisma.$on('query' as never, (e: any) => {
-      logInfo('Database Query', {
-        query: e.query,
-        params: e.params,
-        duration: e.duration,
+    // Setup logging for development
+    if (process.env.NODE_ENV === 'development') {
+      prisma.$on('query' as never, (e: any) => {
+        logInfo('Database Query', {
+          query: e.query,
+          params: e.params,
+          duration: e.duration,
+        });
       });
-    });
-  }
+    }
   }
 
   return prisma;
@@ -246,4 +247,4 @@ export const gracefulShutdown = async (signal: string) => {
 
 // Setup shutdown handlers
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
-process.on('SIGINT', () => gracefulShutdown('SIGINT')); 
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));

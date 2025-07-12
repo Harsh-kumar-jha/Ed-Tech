@@ -266,3 +266,58 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
   <p>⭐ If you find this project helpful, please give it a star! ⭐</p>
   <p>Made with ❤️ by the IELTS EdTech Platform team</p>
 </div>
+
+## Cloudinary Integration
+
+This project uses Cloudinary for media storage (images, audio, video). The integration provides:
+
+- Secure storage and delivery of media assets
+- Automatic optimization and transformation of images
+- Responsive image handling
+- Support for various media types
+
+### Setup
+
+1. Create a free Cloudinary account at [cloudinary.com](https://cloudinary.com/)
+2. Configure your environment variables:
+
+```
+CLOUDINARY_CLOUD_NAME=your_cloud_name
+CLOUDINARY_API_KEY=your_api_key
+CLOUDINARY_API_SECRET=your_api_secret
+CLOUDINARY_SECURE=true
+```
+
+### Usage
+
+The platform provides a reusable service for media uploads:
+
+```typescript
+import { CloudinaryUploader } from '../services/common/cloudinary-uploader.service';
+
+// Get singleton instance
+const uploader = CloudinaryUploader.getInstance();
+
+// Upload a file
+const result = await uploader.uploadFile(file, {
+  folder: 'my-folder',
+  tags: ['tag1', 'tag2'],
+  // other Cloudinary options
+});
+
+// Access the Cloudinary URL
+const imageUrl = result.data.secure_url;
+```
+
+For API endpoints that accept file uploads, use the multer middleware:
+
+```typescript
+import { createUploadMiddleware } from '../common/multer-upload.middleware';
+
+const imageUpload = createUploadMiddleware('image', {
+  allowedMimeTypes: ['image/jpeg', 'image/png'],
+  limits: { fileSize: 5 * 1024 * 1024 } // 5MB
+});
+
+router.post('/upload', imageUpload, controller.uploadHandler);
+```

@@ -30,6 +30,9 @@ export * from './ai.interface';
 // System domain interfaces
 export * from './system.interface';
 
+// Upload domain interfaces
+export * from './upload.interface';
+
 // Service interfaces
 export * from './services.interface';
 

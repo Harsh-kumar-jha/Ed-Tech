@@ -7,6 +7,7 @@ import { socketConfig } from './socket';
 import { groqConfig } from './ai';
 import { uploadConfig } from './upload';
 import { rateLimitConfig } from './rate-limit';
+import { cloudinaryConfig, cloudinary, isCloudinaryConfigured, validateCloudinaryConfig } from './cloudinary';
 
 export {
   config,
@@ -18,4 +19,8 @@ export {
   groqConfig,
   uploadConfig,
   rateLimitConfig,
+  cloudinaryConfig,
+  cloudinary,
+  isCloudinaryConfigured,
+  validateCloudinaryConfig,
 }; 
