@@ -12,6 +12,7 @@ import { ENVIRONMENTS } from './environments';
 import { DEFAULTS } from './defaults';
 import { TEST_STATUS } from './test-status';
 import { LEADERBOARD_CONFIG } from './leaderboard-config';
+import { LISTENING_CONFIG, LISTENING_MESSAGES, LISTENING_ERRORS } from './listening-config';
 
 
 
@@ -29,3 +30,4 @@ export { ENVIRONMENTS } from './environments';
 export { DEFAULTS } from './defaults';
 export { TEST_STATUS } from './test-status';
 export { LEADERBOARD_CONFIG } from './leaderboard-config';
+export { LISTENING_CONFIG, LISTENING_MESSAGES, LISTENING_ERRORS } from './listening-config';
