@@ -24,6 +24,9 @@ export {
 // IELTS domain interfaces
 export * from './ielts.interface';
 
+// Listening domain interfaces
+export * from './listening.interface';
+
 // AI domain interfaces
 export * from './ai.interface';
 

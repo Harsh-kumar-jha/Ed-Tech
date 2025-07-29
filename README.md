@@ -34,13 +34,47 @@ The IELTS EdTech Platform is a comprehensive, open-source solution designed to r
 - **🔄 Real-time Features**: Socket.IO integration for live communication and updates
 - **📊 Progress Tracking**: Comprehensive analytics and leaderboard system
 
+## 🆕 **Latest Release: Listening Module**
+
+> **🎉 NEW FEATURE**: Complete IELTS Listening Module now available!
+> - **30-minute authentic tests** (25 min audio + 5 min review)
+> - **AI-powered evaluation** with official IELTS band scoring
+> - **Comprehensive analytics** tracking 6 core listening skills
+> - **25+ API endpoints** for seamless integration
+> 
+> 📚 [**View Listening API Documentation →**](./api-docs/listening-module.api.docs.md)
+
+---
+
 ## ✨ Key Features
 
 ### 📚 Core IELTS Modules
-- **📖 Reading Tests**: Advanced reading comprehension with diverse question types
-- **🎧 Listening Tests**: Audio-based assessments with real-time scoring
-- **✍️ Writing Tests**: Essay evaluation with AI-powered feedback and scoring
-- **🗣️ Speaking Tests**: Audio response recording with pronunciation analysis
+
+#### 📖 Reading Module
+- **Advanced Comprehension Tests**: 3 passages with 40 questions covering all IELTS reading question types
+- **Real-time Evaluation**: Instant scoring with detailed performance analytics
+- **Question Type Mastery**: True/False/Not Given, Multiple Choice, Matching, and more
+- **Progress Tracking**: Comprehensive analytics and improvement recommendations
+
+#### 🎧 Listening Module ⭐ **NEW**
+- **Authentic IELTS Experience**: 30-minute tests (25 min audio + 5 min review)
+- **4-Section Structure**: Social survival contexts + Educational/training contexts
+- **10 Question Types**: Form completion, Multiple choice, Note completion, Matching, etc.
+- **AI-Powered Evaluation**: Official IELTS band score calculation (0-9 scale)
+- **Advanced Analytics**: 6 core listening skills analysis with personalized feedback
+- **Audio Security**: Non-pausable, non-rewindable playback with integrity controls
+- **Smart Answer Matching**: Flexible answer validation with acceptable alternatives
+
+#### ✍️ Writing Module
+- **Task 1 & Task 2**: Academic and General Training essay evaluation
+- **AI-Powered Feedback**: Detailed analysis across 4 IELTS criteria
+- **Band Score Calculation**: Accurate scoring with improvement suggestions
+- **Template Management**: Dynamic task generation and structured guidance
+
+#### 🗣️ Speaking Module
+- **Audio Response Recording**: Professional pronunciation analysis
+- **Real-time Feedback**: Immediate evaluation and scoring
+- **Fluency Assessment**: Comprehensive speaking skills evaluation
 
 ### 🚀 Platform Capabilities
 - **👤 Student Portfolio System**: Comprehensive progress tracking and achievement management
@@ -68,11 +102,72 @@ The platform includes a sophisticated **Global Test Session Management System** 
 - **Data Integrity**: Ensures consistent test session state
 - **Scalable Design**: Easily extensible to new IELTS modules
 
-#### API Endpoints:
+#### Global Session API:
 - `GET /api/v1/test-session/active` - Check current active session
 - `POST /api/v1/test-session/abandon` - Abandon current active session
 - `GET /api/v1/test-session/history` - Get session history
 - `POST /api/v1/test-session/cleanup-expired` - Admin cleanup of expired sessions
+
+---
+
+## 🔌 **API Endpoints Overview**
+
+### 📖 **Reading Module**
+```
+GET    /api/v1/reading/test-sets          # Get available reading tests
+POST   /api/v1/reading/start-test         # Start reading test session
+POST   /api/v1/reading/begin-test/:id     # Begin test timing
+POST   /api/v1/reading/submit-answers     # Submit answers for evaluation
+GET    /api/v1/reading/results/:id        # Get test results
+GET    /api/v1/reading/analytics          # Get user analytics
+```
+
+### 🎧 **Listening Module** ⭐ **NEW**
+```
+# Student Endpoints
+GET    /api/v1/listening/tests             # Get available listening tests
+POST   /api/v1/listening/start             # Start listening test session
+GET    /api/v1/listening/session/active    # Get active session details
+PUT    /api/v1/listening/session/:id/progress  # Update session progress
+POST   /api/v1/listening/submit            # Submit answers for evaluation
+GET    /api/v1/listening/history           # Get test history
+GET    /api/v1/listening/analytics         # Get performance analytics
+
+# Admin Endpoints
+POST   /api/v1/listening/admin/tests       # Create new listening test
+POST   /api/v1/listening/admin/tests/:id/audio  # Upload audio files
+GET    /api/v1/listening/admin/tests       # Manage listening tests
+GET    /api/v1/listening/admin/tests/:id/statistics  # View test statistics
+```
+
+### ✍️ **Writing Module**
+```
+POST   /api/v1/ai/writing/start            # Start writing test
+POST   /api/v1/ai/writing/evaluate/task1   # Evaluate Task 1
+POST   /api/v1/ai/writing/evaluate/task2   # Evaluate Task 2
+GET    /api/v1/ai/writing/progress         # Get writing progress
+```
+
+### 🔐 **Authentication**
+```
+POST   /api/v1/auth/register               # User registration
+POST   /api/v1/auth/login                  # Email/username login
+POST   /api/v1/auth/phone-login            # Phone-based login
+POST   /api/v1/auth/verify-otp             # OTP verification
+POST   /api/v1/auth/forgot-password        # Password reset request
+POST   /api/v1/auth/refresh                # Refresh JWT tokens
+```
+
+### 🎯 **Global Test Sessions**
+```
+GET    /api/v1/test-session/active         # Check active session
+POST   /api/v1/test-session/abandon        # Abandon current session
+GET    /api/v1/test-session/history        # Session history
+```
+
+> 📚 **Complete API Documentation**: See `/api-docs/` folder for detailed endpoint documentation
+
+---
 
 ## 🏗️ Technical Architecture
 
@@ -94,15 +189,34 @@ The platform includes a sophisticated **Global Test Session Management System** 
 
 ```
 EdTech/
+├── 📁 api-docs/            # Comprehensive API documentation
+│   ├── 📄 auth.api.docs.md            # Authentication APIs
+│   ├── 📄 reading-module.api.docs.md  # Reading module APIs
+│   ├── 📄 listening-module.api.docs.md # 🆕 Listening module APIs
+│   ├── 📄 writing-evaluation.api.docs.md # Writing evaluation APIs
+│   └── 📄 GLOBAL-TEST-SESSION-SYSTEM.md # Global session management
 ├── 📁 src/
 │   ├── 📁 config/           # Application configuration
 │   ├── 📁 constants/        # Application constants
+│   │   └── 📄 listening-config.ts # 🆕 Listening module constants
 │   ├── 📁 db/              # Database utilities
-│   ├── 📁 models/          # Database models (TypeScript interfaces)
+│   ├── 📁 interface/       # TypeScript interfaces
+│   │   └── 📄 listening.interface.ts # 🆕 Listening module interfaces
 │   ├── 📁 services/        # Modular business logic services
 │   │   ├── 📁 Auth/        # Authentication service
 │   │   ├── 📁 AI/          # AI integration service
-│   │   ├── 📁 Ielts/       # IELTS test service
+│   │   │   └── 📁 config/  
+│   │   │       └── 📄 listening-evaluation.config.ts # 🆕 AI listening config
+│   │   ├── 📁 Ielts/       # IELTS test services
+│   │   │   ├── 📁 services/
+│   │   │   │   ├── 📄 listening-test.service.ts # 🆕 Test management
+│   │   │   │   ├── 📄 listening-session.service.ts # 🆕 Session handling
+│   │   │   │   └── 📄 listening-evaluation.service.ts # 🆕 AI evaluation
+│   │   │   ├── 📁 controller/
+│   │   │   │   ├── 📄 listening-test.controller.ts # 🆕 Admin controllers
+│   │   │   │   └── 📄 listening-session.controller.ts # 🆕 Student controllers
+│   │   │   └── 📁 routes/
+│   │   │       └── 📄 listening.routes.ts # 🆕 Listening API routes
 │   │   ├── 📁 Leaderboard/ # Leaderboard service
 │   │   └── 📁 Profile/     # User profile service
 │   ├── 📁 tests/           # Test utilities and integration tests
@@ -111,6 +225,7 @@ EdTech/
 │   └── 📄 server.ts        # Server setup
 ├── 📁 prisma/              # Modular database schema
 │   ├── 📁 models/          # Individual model files
+│   │   └── 📄 listening-module.prisma # 🆕 Listening database models
 │   ├── 📁 enums/           # Enum definitions
 │   ├── 📁 scripts/         # Schema build scripts
 │   └── 📄 schema.prisma    # Generated main schema

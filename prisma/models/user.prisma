@@ -53,6 +53,13 @@ model User {
   
   // Global Test Session Relations
   globalTestSessions        GlobalTestSession[]      @relation("UserGlobalTestSessions")
+  
+  // Listening Module Relations
+  createdListeningTests     ListeningTest[]          @relation("ListeningTestCreator")
+  listeningTestAttempts     ListeningTestAttempt[]   @relation("UserListeningAttempts")
+  listeningTestResults      ListeningTestResult[]    @relation("UserListeningResults")
+  listeningTestHistory      UserListeningTestHistory[] @relation("UserListeningTestHistory")
+  listeningAnalytics        ListeningPerformanceAnalytics? @relation("UserListeningAnalytics")
 
   @@map("users")
 }

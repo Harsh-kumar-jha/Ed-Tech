@@ -1,0 +1,218 @@
+// ===========================
+// LISTENING MODULE MODELS
+// ===========================
+
+model ListeningTest {
+  id                String                 @id @default(uuid())
+  testId            String                 @unique // From uploaded structure (e.g., "listening_test_1")
+  title             String
+  description       String?
+  difficulty        DifficultyLevel        @default(INTERMEDIATE)
+  audioUrl          String                 // URL to the main audio file
+  audioFileName     String                 // Original filename
+  audioFileSize     Int                    // File size in bytes
+  audioDuration     Int                    @default(1500) // 25 minutes in seconds
+  totalDuration     Int                    @default(1800) // 30 minutes total (audio + review)
+  totalQuestions    Int                    @default(40)
+  isActive          Boolean                @default(true)
+  createdBy         String
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+
+  // Relations
+  creator           User                   @relation("ListeningTestCreator", fields: [createdBy], references: [id])
+  sections          ListeningSection[]
+  attempts          ListeningTestAttempt[]
+  results           ListeningTestResult[]
+  userTestHistory   UserListeningTestHistory[]
+
+  @@index([difficulty, isActive])
+  @@index([createdAt])
+  @@map("listening_tests")
+}
+
+model ListeningSection {
+  id                String                 @id @default(uuid())
+  testId            String
+  sectionNumber     Int                    // 1, 2, 3, or 4
+  title             String
+  description       String?
+  type              String                 // SOCIAL_SURVIVAL or EDUCATIONAL_TRAINING
+  audioUrl          String?                // Optional separate audio for section
+  audioStartTime    Int?                   // Start time in main audio (seconds)
+  audioEndTime      Int?                   // End time in main audio (seconds)
+  questionCount     Int                    @default(10)
+  instructions      String?                @db.Text
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+
+  // Relations
+  test              ListeningTest          @relation(fields: [testId], references: [id], onDelete: Cascade)
+  questions         ListeningQuestion[]
+
+  @@unique([testId, sectionNumber])
+  @@index([testId, sectionNumber])
+  @@map("listening_sections")
+}
+
+model ListeningQuestion {
+  id                String                 @id @default(uuid())
+  sectionId         String
+  questionNumber    Int                    // Global question number (1-40)
+  questionType      String                 // From LISTENING_CONFIG.QUESTION_TYPES
+  questionText      String                 @db.Text
+  options           String[]               // For multiple choice questions
+  correctAnswer     String
+  acceptableAnswers String[]               // Alternative correct answers
+  caseSensitive     Boolean                @default(false)
+  points            Float                  @default(1.0)
+  audioTimestamp    Int?                   // Timestamp in audio when question is relevant
+  hints             String[]               // Optional hints for question
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+
+  // Relations
+  section           ListeningSection       @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  answers           ListeningAnswer[]
+
+  @@unique([sectionId, questionNumber])
+  @@index([sectionId, questionNumber])
+  @@map("listening_questions")
+}
+
+model ListeningTestAttempt {
+  id                String                 @id @default(uuid())
+  userId            String
+  testId            String
+  status            TestStatus             @default(NOT_STARTED)
+  startedAt         DateTime               @default(now())
+  audioStartedAt    DateTime?              // When audio playback started
+  completedAt       DateTime?
+  submittedAt       DateTime?
+  timeSpent         Int                    @default(0) // Total time spent in seconds
+  audioTimeSpent    Int                    @default(0) // Time spent with audio playing
+  score             Float?
+  totalScore        Float                  @default(40) // Total possible score
+  bandScore         Float?                 // IELTS band score (0-9)
+  percentage        Float?
+  currentSection    Int                    @default(1) // Current section being attempted
+  audioCompleted    Boolean                @default(false) // Whether audio finished playing
+  warningShown      Boolean                @default(false) // Whether time warning was shown
+  aiSummary         String?                @db.Text
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+
+  // Relations
+  user              User                   @relation("UserListeningAttempts", fields: [userId], references: [id])
+  test              ListeningTest          @relation(fields: [testId], references: [id])
+  answers           ListeningAnswer[]
+  result            ListeningTestResult?
+
+  @@index([userId, testId, status])
+  @@index([userId, createdAt])
+  @@map("listening_test_attempts")
+}
+
+model ListeningAnswer {
+  id                String                 @id @default(uuid())
+  attemptId         String
+  questionId        String
+  questionNumber    Int
+  userAnswer        String
+  isCorrect         Boolean?
+  pointsEarned      Float                  @default(0)
+  timeSpent         Int                    @default(0) // Time spent on this question
+  submittedAt       DateTime               @default(now())
+  aiEvaluation      Json?                  // AI feedback object for complex answers
+  createdAt         DateTime               @default(now())
+
+  // Relations
+  attempt           ListeningTestAttempt   @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  question          ListeningQuestion      @relation(fields: [questionId], references: [id])
+
+  @@unique([attemptId, questionId])
+  @@index([attemptId, questionNumber])
+  @@map("listening_answers")
+}
+
+model ListeningTestResult {
+  id                String                 @id @default(uuid())
+  userId            String
+  testId            String
+  attemptId         String                 @unique
+  score             Float
+  totalScore        Float                  @default(40)
+  bandScore         Float                  // IELTS band score (0-9)
+  percentage        Float
+  timeSpent         Int                    // Total time spent in seconds
+  audioTimeSpent    Int                    // Time spent with audio playing
+  correctAnswers    Int
+  wrongAnswers      Int
+  skippedAnswers    Int
+  sectionScores     Json                   // Scores breakdown by section
+  questionTypeScores Json                  // Scores breakdown by question type
+  strengths         String[]               // Areas where user performed well
+  weaknesses        String[]               // Areas needing improvement
+  audioUtilization  Float                  // Percentage of audio time used effectively
+  completionRate    Float                  // Percentage of questions answered
+  aiSummary         String?                @db.Text
+  aiFeedback        Json?                  // Detailed AI feedback
+  recommendations   String[]               // AI-generated improvement recommendations
+  nextLevelSuggestion String?              // Suggested next difficulty level
+  createdAt         DateTime               @default(now())
+
+  // Relations
+  user              User                   @relation("UserListeningResults", fields: [userId], references: [id])
+  test              ListeningTest          @relation(fields: [testId], references: [id])
+  attempt           ListeningTestAttempt   @relation(fields: [attemptId], references: [id])
+
+  @@index([userId, createdAt])
+  @@index([testId, createdAt])
+  @@index([bandScore])
+  @@map("listening_test_results")
+}
+
+model UserListeningTestHistory {
+  id                String                 @id @default(uuid())
+  userId            String
+  testId            String
+  completedAt       DateTime               @default(now())
+
+  // Relations
+  user              User                   @relation("UserListeningTestHistory", fields: [userId], references: [id])
+  test              ListeningTest          @relation(fields: [testId], references: [id])
+
+  @@unique([userId, testId])
+  @@index([userId, completedAt])
+  @@map("user_listening_test_history")
+}
+
+model ListeningPerformanceAnalytics {
+  id                String                 @id @default(uuid())
+  userId            String                 @unique
+  totalTests        Int                    @default(0)
+  averageBandScore  Float?
+  bestBandScore     Float?
+  latestBandScore   Float?
+  averageTimeSpent  Int?                   // Average total time in seconds
+  averageAudioTime  Int?                   // Average audio utilization time
+  strongQuestionTypes String[]             // Question types user excels in
+  weakQuestionTypes  String[]              // Question types user struggles with
+  strongSections    String[]               // Sections where user performs well
+  weakSections      String[]               // Sections needing improvement
+  audioUtilizationRate Float?              // How well user utilizes audio time
+  completionRate    Float?                 // Average completion rate
+  lastTestDate      DateTime?
+  next24HourTest    DateTime?              // When user can take next test (premium only)
+  progressTrend     Json?                  // Last 5 test performance trend
+  listeningSkills   Json?                  // Detailed skill breakdown
+  aiInsights        Json?                  // AI-generated insights and recommendations
+  studyPlan         Json?                  // Personalized study recommendations
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+
+  // Relations
+  user              User                   @relation("UserListeningAnalytics", fields: [userId], references: [id])
+
+  @@map("listening_performance_analytics")
+} 

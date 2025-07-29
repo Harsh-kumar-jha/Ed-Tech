@@ -1,4 +1,7 @@
 import { Router } from 'express';
+import readingModuleRoutes from './reading-module.routes';
+import globalTestSessionRoutes from './global-test-session.routes';
+import listeningRoutes from './listening.routes';
 
 const router: Router = Router();
 
@@ -11,21 +14,11 @@ router.get('/test', (req, res) => {
   });
 });
 
-// Future IELTS endpoints
-router.get('/tests', (req, res) => {
-  res.json({
-    success: true,
-    message: 'Get IELTS tests (placeholder)',
-    data: [],
-  });
-});
+// Module Routes
+router.use('/reading', readingModuleRoutes);
+router.use('/listening', listeningRoutes);
 
-router.post('/tests', (req, res) => {
-  res.json({
-    success: true,
-    message: 'Create IELTS test (placeholder)',
-    data: { testId: 'test-123' },
-  });
-});
+// Global Test Session Routes
+router.use('/test-session', globalTestSessionRoutes);
 
 export default router;
